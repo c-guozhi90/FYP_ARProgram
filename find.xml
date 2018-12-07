@@ -1,0 +1,9 @@
+<application>
+  <component name="FindSettings">
+    <option name="customScope" value="File '.../build.gradle [fyp_ar_clientapp]'" />
+    <option name="defaultScopeName" value="File '.../build.gradle [fyp_ar_clientapp]'" />
+    <option name="localWholeWordsOnly" value="true" />
+    <option name="LOCAL_WHOLE_WORDS_ONLY" value="true" />
+    <option name="SEARCH_SCOPE" value="File '.../build.gradle [fyp_ar_clientapp]'" />
+  </component>
+</application>
