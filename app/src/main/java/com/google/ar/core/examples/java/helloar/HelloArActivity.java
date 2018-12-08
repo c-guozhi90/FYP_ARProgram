@@ -75,10 +75,6 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
   private TapHelper tapHelper;
 
   private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
-  private final ObjectRenderer virtualObject = new ObjectRenderer();
-  private final ObjectRenderer virtualObjectShadow = new ObjectRenderer();
-  private final PlaneRenderer planeRenderer = new PlaneRenderer();
-  private final PointCloudRenderer pointCloudRenderer = new PointCloudRenderer();
 
   // Temporary matrix allocated here to reduce number of allocations for each frame.
   private final float[] anchorMatrix = new float[16];
@@ -228,16 +224,6 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
     try {
       // Create the texture and pass it to ARCore session to be filled during update().
       backgroundRenderer.createOnGlThread(/*context=*/ this);
-      planeRenderer.createOnGlThread(/*context=*/ this, "models/trigrid.png");
-      pointCloudRenderer.createOnGlThread(/*context=*/ this);
-
-      virtualObject.createOnGlThread(/*context=*/ this, "models/andy.obj", "models/andy.png");
-      virtualObject.setMaterialProperties(0.0f, 2.0f, 0.5f, 6.0f);
-
-      virtualObjectShadow.createOnGlThread(
-          /*context=*/ this, "models/andy_shadow.obj", "models/andy_shadow.png");
-      virtualObjectShadow.setBlendMode(BlendMode.Shadow);
-      virtualObjectShadow.setMaterialProperties(1.0f, 0.0f, 0.0f, 1.0f);
 
     } catch (IOException e) {
       Log.e(TAG, "Failed to read an asset file", e);
@@ -298,8 +284,6 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
 
       // Visualize tracked points.
       PointCloud pointCloud = frame.acquirePointCloud();
-      pointCloudRenderer.update(pointCloud);
-      pointCloudRenderer.draw(viewmtx, projmtx);
 
       // Application is responsible for releasing the point cloud resources after
       // using it.
@@ -315,12 +299,8 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
         }
       }
 
-      // Visualize planes.
-      planeRenderer.drawPlanes(
-          session.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);
 
       // Visualize anchors created by touch.
-      float scaleFactor = 1.0f;
       for (ColoredAnchor coloredAnchor : anchors) {
         if (coloredAnchor.anchor.getTrackingState() != TrackingState.TRACKING) {
           continue;
@@ -330,10 +310,6 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
         coloredAnchor.anchor.getPose().toMatrix(anchorMatrix, 0);
 
         // Update and draw the model and its shadow.
-        virtualObject.updateModelMatrix(anchorMatrix, scaleFactor);
-        virtualObjectShadow.updateModelMatrix(anchorMatrix, scaleFactor);
-        virtualObject.draw(viewmtx, projmtx, colorCorrectionRgba, coloredAnchor.color);
-        virtualObjectShadow.draw(viewmtx, projmtx, colorCorrectionRgba, coloredAnchor.color);
       }
 
     } catch (Throwable t) {
