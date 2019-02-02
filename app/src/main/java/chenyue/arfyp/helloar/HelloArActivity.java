@@ -182,6 +182,7 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
 
         surfaceView.onResume();
         displayRotationHelper.onResume();
+        FreetypeJNI.extractFontFromAsset(this);
         FreetypeJNI.printChar();
     }
 

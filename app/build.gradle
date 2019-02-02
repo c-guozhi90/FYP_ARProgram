@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
     defaultConfig {
-        applicationId "com.google.ar.core.examples.java.helloar"
+        applicationId "fyp.chenyue.java.helloar"
 
         // AR Optional apps must declare minSdkVersion >= 14.
         // AR Required apps must declare minSdkVersion >= 24.
@@ -11,8 +11,10 @@ android {
         targetSdkVersion 27
         versionCode 1
         versionName "1.0"
-        ndk{
-            moduleName "JNIHello"
+        externalNativeBuild{
+            cmake{
+                arguments '-DANDROID_STL=c++_static'
+            }
         }
     }
     compileOptions {
@@ -24,7 +26,16 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            debuggable true
+        }
     }
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+
 }
 
 dependencies {
