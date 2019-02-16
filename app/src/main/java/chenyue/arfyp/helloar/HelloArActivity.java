@@ -16,23 +16,28 @@
 
 package chenyue.arfyp.helloar;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.Pair;
 import android.view.MotionEvent;
 import android.widget.Toast;
 
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
+import com.google.ar.core.AugmentedImage;
+import com.google.ar.core.AugmentedImageDatabase;
 import com.google.ar.core.Camera;
+import com.google.ar.core.Config;
 import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 import com.google.ar.core.Point;
 import com.google.ar.core.Point.OrientationMode;
-import com.google.ar.core.PointCloud;
 import com.google.ar.core.Session;
 import com.google.ar.core.Trackable;
 import com.google.ar.core.TrackingState;
@@ -44,19 +49,26 @@ import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-import chenyue.arfyp.common.freetype.FreetypeJNI;
 import chenyue.arfyp.common.helpers.CameraPermissionHelper;
 import chenyue.arfyp.common.helpers.DisplayRotationHelper;
 import chenyue.arfyp.common.helpers.FullScreenHelper;
 import chenyue.arfyp.common.helpers.SnackbarHelper;
 import chenyue.arfyp.common.helpers.TapHelper;
+import chenyue.arfyp.common.informationUtil.InformationManager;
 import chenyue.arfyp.common.rendering.BackgroundRenderer;
 import chenyue.arfyp.common.rendering.PlaneRenderer;
+import chenyue.arfyp.common.rendering.TextRenderer;
+
+import static com.google.ar.core.TrackingState.TRACKING;
 
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
@@ -77,10 +89,17 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
     private TapHelper tapHelper;
 
     private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
+    private final TextRenderer textRenderer = new TextRenderer();
 
     // Temporary matrix allocated here to reduce number of allocations for each frame.
     private final float[] anchorMatrix = new float[16];
     private static final float[] DEFAULT_COLOR = new float[]{0f, 0f, 0f, 0f};
+    private boolean useSingleImage = false;
+    private boolean shouldConfigureSession = false;
+    private Collection<AugmentedImage> updatedAugmentedImage;
+    private Map<Integer, Pair<AugmentedImage, InformationManager>> augmentedImageMap = new HashMap<>();
+    public static int width;
+    public static int height;
 
     // Anchors created from taps used for object placing with a given color.
     private static class ColoredAnchor {
@@ -104,7 +123,7 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
 
         // Set up tap listener.
         tapHelper = new TapHelper(/*context=*/ this);
-        surfaceView.setOnTouchListener(tapHelper);
+        //surfaceView.setOnTouchListener(tapHelper);
 
         // Set up renderer.
         surfaceView.setPreserveEGLContextOnPause(true);
@@ -166,6 +185,12 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
                 Log.e(TAG, "Exception creating session", exception);
                 return;
             }
+            shouldConfigureSession = true;
+
+        }
+        if (shouldConfigureSession) {
+            configureSession();
+            shouldConfigureSession = false;
         }
 
         // Note that order matters - see the note in onPause(), the reverse applies here.
@@ -182,8 +207,6 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
 
         surfaceView.onResume();
         displayRotationHelper.onResume();
-        FreetypeJNI.extractFontFromAsset(this);
-        FreetypeJNI.printChar();
     }
 
     @Override
@@ -226,6 +249,7 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
         try {
             // Create the texture and pass it to ARCore session to be filled during update().
             backgroundRenderer.createOnGlThread(/*context=*/ this);
+            textRenderer.createOnTread(/*context*/ this);
 
         } catch (IOException e) {
             Log.e(TAG, "Failed to read an asset file", e);
@@ -236,6 +260,8 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         displayRotationHelper.onSurfaceChanged(width, height);
         GLES20.glViewport(0, 0, width, height);
+        HelloArActivity.height = height;
+        HelloArActivity.width = width;
     }
 
     @Override
@@ -260,7 +286,7 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
             Camera camera = frame.getCamera();
 
             // Handle one tap per frame.
-            handleTap(frame, camera);
+            //handleTap(frame, camera);
 
             // Draw background.
             backgroundRenderer.draw(frame);
@@ -284,46 +310,119 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
             final float[] colorCorrectionRgba = new float[4];
             frame.getLightEstimate().getColorCorrection(colorCorrectionRgba, 0);
 
-            // Visualize tracked points.
-            PointCloud pointCloud = frame.acquirePointCloud();
-
-            // Application is responsible for releasing the point cloud resources after
-            // using it.
-            pointCloud.release();
-
             // Check if we detected at least one plane. If so, hide the loading message.
             if (messageSnackbarHelper.isShowing()) {
                 for (Plane plane : session.getAllTrackables(Plane.class)) {
-                    if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    if (plane.getTrackingState() == TRACKING) {
                         messageSnackbarHelper.hide(this);
                         break;
                     }
                 }
             }
 
+            updatedAugmentedImage = frame.getUpdatedTrackables(AugmentedImage.class);
+            for (AugmentedImage augmentedImage : updatedAugmentedImage) {
+                switch (augmentedImage.getTrackingState()) {
+                    case PAUSED:
+                        // When an image is in PAUSED state, but the camera is not PAUSED, it has been detected,
+                        // but not yet tracked.
+                        String text = String.format("Detected Image %d", augmentedImage.getIndex());
+                        messageSnackbarHelper.showMessage(this, text);
+                        break;
 
-            // Visualize anchors created by touch.
-            for (ColoredAnchor coloredAnchor : anchors) {
-                if (coloredAnchor.anchor.getTrackingState() != TrackingState.TRACKING) {
-                    continue;
+                    case TRACKING:
+                        // Create a new anchor for newly found images.
+
+                        if (!augmentedImageMap.containsKey(augmentedImage.getIndex())) {
+                            InformationManager info = new InformationManager(augmentedImage.getName());
+                            augmentedImageMap.put(
+                                    augmentedImage.getIndex(), Pair.create(augmentedImage, info));
+                        }
+                        break;
+
+                    case STOPPED:
+                        augmentedImageMap.remove(augmentedImage.getIndex());
+                        break;
+
+                    default:
+                        break;
                 }
-                // Get the current pose of an Anchor in world space. The Anchor pose is updated
-                // during calls to session.update() as ARCore refines its estimate of the world.
-                coloredAnchor.anchor.getPose().toMatrix(anchorMatrix, 0);
 
-                // Update and draw the model and its shadow.
             }
 
+            for (Pair<AugmentedImage, InformationManager> pair : augmentedImageMap.values()) {
+                AugmentedImage augmentedImage = pair.first;
+                InformationManager informationManager = pair.second;
+                if (augmentedImage.getTrackingState() == TRACKING) {
+                    augmentedImage.getCenterPose().toMatrix(anchorMatrix, 0);
+                    textRenderer.updateModelMatrix(anchorMatrix, 1.0f);
+                    textRenderer.draw(viewmtx, projmtx, informationManager);
+                }
+            }
         } catch (Throwable t) {
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
     }
 
+    private void configureSession() {
+        Config config = new Config(session);
+        if (!setupAugmentedImageDatabase(config)) {
+            messageSnackbarHelper.showError(this, "Could not setup augmented image database");
+        }
+        session.configure(config);
+    }
+
+    private boolean setupAugmentedImageDatabase(Config config) {
+        AugmentedImageDatabase augmentedImageDatabase;
+
+        // There are two ways to configure an AugmentedImageDatabase:
+        // 1. Add Bitmap to DB directly
+        // 2. Load a pre-built AugmentedImageDatabase
+        // Option 2) has
+        // * shorter setup time
+        // * doesn't require images to be packaged in apk.
+        if (useSingleImage) {
+            Bitmap augmentedImageBitmap = loadAugmentedImageBitmap();
+            if (augmentedImageBitmap == null) {
+                return false;
+            }
+
+            augmentedImageDatabase = new AugmentedImageDatabase(session);
+            augmentedImageDatabase.addImage("image_name", augmentedImageBitmap);
+            // If the physical size of the image is known, you can instead use:
+            //     augmentedImageDatabase.addImage("image_name", augmentedImageBitmap, widthInMeters);
+            // This will improve the initial detection speed. ARCore will still actively estimate the
+            // physical size of the image as it is viewed from multiple viewpoints.
+        } else {
+            // This is an alternative way to initialize an AugmentedImageDatabase instance,
+            // load a pre-existing augmented image database.
+            try (InputStream is = getAssets().open("marker_database.imgdb")) {
+                augmentedImageDatabase = AugmentedImageDatabase.deserialize(session, is);
+            } catch (IOException e) {
+                Log.e(TAG, "IO exception loading augmented image database.", e);
+                return false;
+            }
+        }
+
+        config.setAugmentedImageDatabase(augmentedImageDatabase);
+        return true;
+    }
+
+    private Bitmap loadAugmentedImageBitmap() {
+        try (InputStream is = getAssets().open("default.jpg")) {
+            return BitmapFactory.decodeStream(is);
+        } catch (IOException e) {
+            Log.e(TAG, "IO exception loading augmented image bitmap.", e);
+        }
+        return null;
+    }
+
+
     // Handle only one tap per frame, as taps are usually low frequency compared to frame rate.
     private void handleTap(Frame frame, Camera camera) {
         MotionEvent tap = tapHelper.poll();
-        if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
+        if (tap != null && camera.getTrackingState() == TRACKING) {
             for (HitResult hit : frame.hitTest(tap)) {
                 // Check if any plane was hit, and if it was hit inside the plane polygon
                 Trackable trackable = hit.getTrackable();
@@ -363,4 +462,5 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
             }
         }
     }
+
 }

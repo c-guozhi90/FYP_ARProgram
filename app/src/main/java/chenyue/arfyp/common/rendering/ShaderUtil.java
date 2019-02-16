@@ -41,7 +41,6 @@ public class ShaderUtil {
     // Get the compilation status.
     final int[] compileStatus = new int[1];
     GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
-
     // If the compilation failed, delete the shader.
     if (compileStatus[0] == 0) {
       Log.e(tag, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
