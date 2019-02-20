@@ -75,8 +75,8 @@ import static com.google.ar.core.TrackingState.TRACKING;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3d model of the Android robot.
  */
-public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
-    private static final String TAG = HelloArActivity.class.getSimpleName();
+public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
     private GLSurfaceView surfaceView;
@@ -123,7 +123,7 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
 
         // Set up tap listener.
         tapHelper = new TapHelper(/*context=*/ this);
-        //surfaceView.setOnTouchListener(tapHelper);
+        surfaceView.setOnTouchListener(tapHelper);
 
         // Set up renderer.
         surfaceView.setPreserveEGLContextOnPause(true);
@@ -260,8 +260,8 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         displayRotationHelper.onSurfaceChanged(width, height);
         GLES20.glViewport(0, 0, width, height);
-        HelloArActivity.height = height;
-        HelloArActivity.width = width;
+        MainActivity.height = height;
+        MainActivity.width = width;
     }
 
     @Override
@@ -334,7 +334,9 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
                         // Create a new anchor for newly found images.
 
                         if (!augmentedImageMap.containsKey(augmentedImage.getIndex())) {
-                            InformationManager info = new InformationManager(augmentedImage.getName());
+                            String facility_name = augmentedImage.getName();
+                            facility_name = facility_name.substring(0, facility_name.indexOf('.'));
+                            InformationManager info = new InformationManager(facility_name);
                             augmentedImageMap.put(
                                     augmentedImage.getIndex(), Pair.create(augmentedImage, info));
                         }
@@ -427,7 +429,7 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
                 // Check if any plane was hit, and if it was hit inside the plane polygon
                 Trackable trackable = hit.getTrackable();
                 // Creates an anchor if a plane or an oriented point was hit.
-                if ((trackable instanceof Plane
+                if ((trackable instanceof AugmentedImage
                         && ((Plane) trackable).isPoseInPolygon(hit.getHitPose())
                         && (PlaneRenderer.calculateDistanceToPlane(hit.getHitPose(), camera.getPose()) > 0))
                         || (trackable instanceof Point

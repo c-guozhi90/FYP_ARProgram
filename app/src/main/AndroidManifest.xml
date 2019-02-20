@@ -38,7 +38,7 @@
         tools:ignore="GoogleAppIndexingWarning">
 
         <activity
-            android:name="chenyue.arfyp.helloar.HelloArActivity"
+            android:name="chenyue.arfyp.helloar.MainActivity"
             android:configChanges="orientation|screenSize"
             android:exported="true"
             android:screenOrientation="locked"
