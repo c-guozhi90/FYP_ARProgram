@@ -8,7 +8,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class NetworkEnquiry implements Runnable {
+public class NetworkEnquiry extends Thread  {
     private String facilityName; // the facility name that users are interested in
     private InformationManager informationSetter;
     private int lines; // lines of text
@@ -20,12 +20,14 @@ public class NetworkEnquiry implements Runnable {
 
     @Override
     public void run() {
-        String target = "http://xxx/api/events/" + this.facilityName;
+        String target = "https://fypserverentry.herokuapp.com/api/events/" + this.facilityName;
         String information = null;
         String temp;
         try {
             URL url = new URL(target);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.connect();
             InputStreamReader isr = new InputStreamReader(connection.getInputStream());
             BufferedReader br = new BufferedReader(isr);
             while ((temp = br.readLine()) != null) {
@@ -33,6 +35,7 @@ public class NetworkEnquiry implements Runnable {
             }
             br.close();
             isr.close();
+            connection.disconnect();
             JSONArray returnedJSONArray = new JSONArray(information);
             informationSetter.setInformationArray(returnedJSONArray);
 

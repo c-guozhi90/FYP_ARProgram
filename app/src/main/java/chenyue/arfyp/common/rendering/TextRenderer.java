@@ -12,7 +12,6 @@ import java.util.ArrayList;
 
 import chenyue.arfyp.common.freetype.FreetypeJNI;
 import chenyue.arfyp.common.informationUtil.InformationManager;
-import chenyue.arfyp.helloar.HelloArActivity;
 
 public class TextRenderer {
     private static final int BYTE_PER_FLOAT = 4;
@@ -93,17 +92,26 @@ public class TextRenderer {
     }
 
     public void draw(float[] cameraView, float[] cameraPerspective, InformationManager informationManager) {
-        float[] originPos = {-0.6f, 0.6f}; // the first elem is x-pos, the second is z-pos
+        float[] originPos = {-0.0f, 0.0f}; // the first elem is x-pos, the second is z-pos
+
+        // clear color in buffer
+//        GLES20.glClearColor(1, 1, 1, 1);
+//        GLES20.glColorMask(false, false, false, true);
+//        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+//        GLES20.glColorMask(true, true, true, true);
+
         GLES20.glUseProgram(program);
         ShaderUtil.checkGLError(TAG, "Before draw");
+
+        // set matrix into shader
         Matrix.multiplyMM(modelViewMatrix, 0, cameraView, 0, modelMatrix, 0);
         Matrix.multiplyMM(modelViewProjectionMatrix, 0, cameraPerspective, 0, modelViewMatrix, 0);
-
-        // bind MVPMatrix
         GLES20.glUniformMatrix4fv(modelViewProjectionUniform, 1, false, modelViewProjectionMatrix, 0);
 
-        //GLES20.glEnable(GLES20.GL_BLEND);
-        //GLES20.glBlendFunc(GLES20.GL_ZERO, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        // set render mode
+        GLES20.glDepthMask(false);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         // set every char coordinates and draw
         synchronized (informationManager.getInformationArray()) {
             String facilityName = informationManager.getFacilityName();
@@ -112,17 +120,18 @@ public class TextRenderer {
 
             // draw events info only when they are expended
             if (informationManager.isExpended()) {
-                originPos[0] += 0.2f;
+                originPos[0] += 0.02f;
                 ArrayList<String> events = informationManager.getInformationArray();
 
                 // draw the evens holding in facility
                 for (String event : events) {
+                    originPos[1] += 0.03f;
                     drawSentence(event, originPos, 0.5f);
-                    originPos[1] -= 0.3f;
                 }
             }
         }
-        //GLES20.glDisable(GLES20.GL_BLEND);
+        GLES20.glDepthMask(true);
+        GLES20.glDisable(GLES20.GL_BLEND);
         GLES20.glDisableVertexAttribArray(positionAttribute);
         GLES20.glDisableVertexAttribArray(texCoordAttribute);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
@@ -132,30 +141,28 @@ public class TextRenderer {
     private void drawSentence(String sentence, float[] originPos, float scaleFactor) {
         float originX = originPos[0];
         float originZ = originPos[1];
-
         for (int idx = 0; idx < sentence.length(); idx++) {
             char c = sentence.charAt(idx);
-            float charHight = (float) charBitmaps[c].getHeight() / (float) HelloArActivity.height * scaleFactor;
-            float charWidth = (float) charBitmaps[c].getWidth() / (float) HelloArActivity.width * scaleFactor;
-            float bearingX = (float) charBitmaps[c].getBitmap_top() / (float) HelloArActivity.width * scaleFactor;
-            float bearingZ = (float) charBitmaps[c].getBitmap_left() / (float) HelloArActivity.width * scaleFactor;
-            float advance = (float) charBitmaps[c].getAdvance() / (float) HelloArActivity.width * scaleFactor;
+            float charHight = (float) charBitmaps[c].getHeight() / 10000 * scaleFactor;
+            float charWidth = (float) charBitmaps[c].getWidth() / 10000 * scaleFactor;
+            float bearingX = (float) charBitmaps[c].getBitmap_left() / 10000 * scaleFactor;
+            float bearingZ = (float) charBitmaps[c].getBitmap_top() / 10000 * scaleFactor;
+            float advance = (float) charBitmaps[c].getAdvance() / 10000 * scaleFactor;
 
             float startX = originX + bearingX;
-            float startZ = originZ + bearingZ;
+            float startZ = originZ + (charHight - bearingZ);
             float[] vertices = {
                     // x, y, z    // texture coordinates
-                    startX, startZ, 0.0f, 0.0f, 0.0f,  // from the left-top corner
-                    startX, startZ - charHight, 0.0f, 0.0f, 1.0f,
-                    startX + charWidth, startZ, 0.0f, 1.0f, 0.0f,
-                    startX + charWidth, startZ, 0.0f, 1.0f, 0.0f,
-                    startX, startZ - charHight, 0.0f, 0.0f, 1.0f,
-                    startX + charWidth, startZ - charHight, 0.0f, 1.0f, 1.0f
-
+                    startX, 0.0f, startZ, 0.0f, 1.0f,  // from the bottom-left corner
+                    startX, 0.0f, startZ - charHight, 0.0f, 0.0f,
+                    startX + charWidth, 0.0f, startZ, 1.0f, 1.0f,
+                    startX + charWidth, 0.0f, startZ, 1.0f, 1.0f,
+                    startX, 0.0f, startZ - charHight, 0.0f, 0.0f,
+                    startX + charWidth, 0.0f, startZ - charHight, 1.0f, 0.0f
             };
 
             // bind texture
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, charBitmaps[c].getTextureId());
 
             // bind vertices
@@ -167,8 +174,7 @@ public class TextRenderer {
             GLES20.glVertexAttribPointer(texCoordAttribute, TEXTCOORD_NUM, GLES20.GL_FLOAT, false, 5 * BYTE_PER_FLOAT, verticesBuffer);
             GLES20.glEnableVertexAttribArray(texCoordAttribute);
 
-            // set blend mode
-
+            // draw
             GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
 
             originX += advance;
