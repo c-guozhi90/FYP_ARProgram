@@ -16,22 +16,40 @@
 
 package chenyue.arfyp.helloar;
 
+import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
+import android.media.Image;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.util.Pair;
+import android.util.Size;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.Toast;
 
+import com.chenyue.tensorflowdetection.Classifier;
+import com.chenyue.tensorflowdetection.Logger;
+import com.chenyue.tensorflowdetection.MultiBoxTracker;
+import com.chenyue.tensorflowdetection.TensorFlowObjectDetectionAPIModel;
+import com.chenyue.tensorflowdetection.TensorflowUtils;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.AugmentedImage;
 import com.google.ar.core.AugmentedImageDatabase;
 import com.google.ar.core.Camera;
+import com.google.ar.core.CameraConfig;
 import com.google.ar.core.Config;
 import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
@@ -53,6 +71,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -77,9 +97,13 @@ import static com.google.ar.core.TrackingState.TRACKING;
  */
 public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
     private static final String TAG = MainActivity.class.getSimpleName();
+    public final Context context = this;
 
-    // Rendering. The Renderers are created here, and initialized when the GL surface is created.
-    private GLSurfaceView surfaceView;
+    // Views
+    private Activity mainActivity;
+    private GLSurfaceView glView;
+    private trackingOverlay trackingView;
+    private View controlView;
 
     private boolean installRequested;
 
@@ -98,8 +122,18 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private boolean shouldConfigureSession = false;
     private Collection<AugmentedImage> updatedAugmentedImage;
     private Map<Integer, Pair<AugmentedImage, InformationManager>> augmentedImageMap = new HashMap<>();
-    public static int width;
-    public static int height;
+
+    // Tensorflow related
+    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/frozen_inference_graph.pb";
+    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/facility_labels_list.txt";
+    private Classifier detector;
+    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
+    private static final int TF_INPUT_SIZE = 300;
+    private Matrix frameToCropTransform;
+    private Matrix cropToFrameTransform;
+    private MultiBoxTracker tracker;
+    private Runnable detection = null;
+    private CameraCharacteristics cameraCharacteristics = null;
 
     // Anchors created from taps used for object placing with a given color.
     private static class ColoredAnchor {
@@ -118,20 +152,25 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        surfaceView = findViewById(R.id.surfaceview);
+        mainActivity = this;
+        glView = findViewById(R.id.surfaceview);
         displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
 
         // Set up tap listener.
         tapHelper = new TapHelper(/*context=*/ this);
-        surfaceView.setOnTouchListener(tapHelper);
+        glView.setOnTouchListener(tapHelper);
 
         // Set up renderer.
-        surfaceView.setPreserveEGLContextOnPause(true);
-        surfaceView.setEGLContextClientVersion(2);
-        surfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
-        surfaceView.setRenderer(this);
-        surfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-        surfaceView.setWillNotDraw(false);
+        glView.setPreserveEGLContextOnPause(true);
+        glView.setEGLContextClientVersion(2);
+        glView.setEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
+        glView.setRenderer(this);
+        glView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        glView.setWillNotDraw(false);
+
+        // Set up tracking related stuff
+        trackingView = findViewById(R.id.trackingView);
+        tracker = new MultiBoxTracker(this);
 
         installRequested = false;
     }
@@ -205,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             return;
         }
 
-        surfaceView.onResume();
+        glView.onResume();
         displayRotationHelper.onResume();
     }
 
@@ -217,7 +256,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             // to query the session. If Session is paused before GLSurfaceView, GLSurfaceView may
             // still call session.update() and get a SessionPausedException.
             displayRotationHelper.onPause();
-            surfaceView.onPause();
+            glView.onPause();
             session.pause();
         }
     }
@@ -250,7 +289,15 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             // Create the texture and pass it to ARCore session to be filled during update().
             backgroundRenderer.createOnGlThread(/*context=*/ this);
             textRenderer.createOnTread(/*context*/ this);
-
+            // set up tensorflow detector and tracker
+            detector = TensorFlowObjectDetectionAPIModel.create(this.getAssets(), MODEL_PATH, LABELS_PATH, TF_INPUT_SIZE);
+            trackingView.addDrawCallback(new trackingOverlay.DrawCallback() {
+                @Override
+                public void draw(final Canvas canvas) {
+                    tracker.draw(canvas);
+                    // don't draw debug view
+                }
+            });
         } catch (IOException e) {
             Log.e(TAG, "Failed to read an asset file", e);
         }
@@ -259,9 +306,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         displayRotationHelper.onSurfaceChanged(width, height);
-        GLES20.glViewport(0, 0, width, height);
-        MainActivity.height = height;
-        MainActivity.width = width;
+        //GLES20.glViewport(0, 0, width, height);
+        Log.d(TAG, "width: " + width + "height: " + height);
     }
 
     @Override
@@ -284,6 +330,10 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             // camera framerate.
             Frame frame = session.update();
             Camera camera = frame.getCamera();
+            CameraConfig cameraConfig = session.getCameraConfig();
+            String cameraId = cameraConfig.getCameraId();
+            final CameraManager manager = (CameraManager) mainActivity.getSystemService(Context.CAMERA_SERVICE);
+            cameraCharacteristics = manager.getCameraCharacteristics(cameraId);
 
             // Handle one tap per frame.
             //handleTap(frame, camera);
@@ -320,6 +370,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 }
             }
 
+            /* augmented image start */
             updatedAugmentedImage = frame.getUpdatedTrackables(AugmentedImage.class);
             for (AugmentedImage augmentedImage : updatedAugmentedImage) {
                 switch (augmentedImage.getTrackingState()) {
@@ -332,7 +383,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
                     case TRACKING:
                         // Create a new anchor for newly found images.
-
                         if (!augmentedImageMap.containsKey(augmentedImage.getIndex())) {
                             String facility_name = augmentedImage.getName();
                             facility_name = facility_name.substring(0, facility_name.indexOf('.'));
@@ -361,10 +411,95 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                     textRenderer.draw(viewmtx, projmtx, informationManager);
                 }
             }
+            /* augmented image end */
+
+            /* tensorflow detection start */
+
+            //Here should be asymmetric detection.
+            if (detection == null) {
+                Image image = frame.acquireCameraImage();
+                detection = tensorflowThread(image);
+                new Thread(detection).start();
+            }
+
+            //HERE STILL NEEDS A CHARACTER RECOGNITION PROCESS
+
+            /* tensorflow detection end */
+
+        } catch (NullPointerException npe) {
+            Log.e(TAG, "something wrong!");
         } catch (Throwable t) {
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
+    }
+
+    static int count = 0;
+
+    private Runnable tensorflowThread(Image image) {
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                if (cameraCharacteristics == null) return;
+                int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) - TensorflowUtils.getScreenOrientation(mainActivity);
+                Logger logger = new Logger(TAG);
+                Size size = new Size(image.getWidth(), image.getHeight());
+
+                int[] rgbBytes = new int[image.getWidth() * image.getHeight()];
+                TensorflowUtils.convert(image.getPlanes(), size, rgbBytes);
+
+                frameToCropTransform = TensorflowUtils.getTransformationMatrix(
+                        size.getWidth(), size.getHeight(), TF_INPUT_SIZE, TF_INPUT_SIZE, sensorOrientation, false);
+                cropToFrameTransform = new Matrix();
+                frameToCropTransform.invert(cropToFrameTransform);
+                Bitmap originBitmap = Bitmap.createBitmap(
+                        rgbBytes, size.getWidth(), size.getHeight(), Bitmap.Config.ARGB_8888);
+                if (count < 10)
+                    TensorflowUtils.saveBitmap(context, originBitmap, "originPreview.png");
+
+                Bitmap croppedFrame = Bitmap.createBitmap(
+                        originBitmap, 0, 0, originBitmap.getWidth(), originBitmap.getHeight(), frameToCropTransform, false);
+
+                Canvas canvas = new Canvas(croppedFrame);
+                Paint paint = new Paint();
+                paint.setColor(Color.BLUE);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2.0f);
+                if (count < 10)
+                    TensorflowUtils.saveBitmap(context, croppedFrame, "croppedPreview.png");
+                final List<Classifier.Recognition> mappedRecognitions = new LinkedList<>(); // record those qualified results
+                List<Classifier.Recognition> objectList = detector.recognizeImage(croppedFrame);
+                for (Classifier.Recognition recognizedObject : objectList) {
+                    final RectF location = recognizedObject.getLocation();
+                    if (recognizedObject.getConfidence() >= MINIMUM_CONFIDENCE_TF_OD_API && location != null) {
+                        Log.d(TAG, "title: " + recognizedObject.getTitle() + " with confidence " + recognizedObject.getConfidence());
+                        //logger.d("location before transform: x %f, y %f", location.left, location.top);
+                        canvas.drawRect(location, paint);
+                        cropToFrameTransform.mapRect(location);
+                        recognizedObject.setLocation(location);
+                        //logger.d("location after transform: x %f, y %f", location.left, location.right);
+                        mappedRecognitions.add(recognizedObject); // the recognized frame with predefined size from ARCore
+                    }
+                }
+                if (count < 10)
+                    TensorflowUtils.saveBitmap(context, croppedFrame, "afterDraw.png");
+
+                //add detected objects into result set, set proper parameters for tracker
+                tracker.setFrameWidth(image.getWidth());
+                tracker.setFrameHeight(image.getHeight());
+                tracker.setSensorOrientation(sensorOrientation);
+                tracker.trackResults(mappedRecognitions);
+                logger.d("size of collection %d", mappedRecognitions.size());
+                // draw it
+                trackingView.refreshView();
+                originBitmap.recycle();
+                croppedFrame.recycle();
+                image.close();
+                detection = null;
+                count++;
+            }
+        };
+        return runnable;
     }
 
     private void configureSession() {
@@ -372,6 +507,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         if (!setupAugmentedImageDatabase(config)) {
             messageSnackbarHelper.showError(this, "Could not setup augmented image database");
         }
+        config.setFocusMode(Config.FocusMode.AUTO);
         session.configure(config);
     }
 

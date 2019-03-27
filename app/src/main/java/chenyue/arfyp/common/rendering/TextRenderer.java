@@ -13,16 +13,18 @@ import java.util.ArrayList;
 import chenyue.arfyp.common.freetype.FreetypeJNI;
 import chenyue.arfyp.common.informationUtil.InformationManager;
 
+/* we cannot determine the text coordinates directly.
+ * The coordinates should be estimated by the anchor which will be returned by the ARCore.
+ * we start rendering text at the anchor with no adjustment. And the Anchor is always in the
+ * center of the recognized image.Indeed, this may cause visual discomfort. But this is the
+ * easiest way to do the stuff.
+ * */
 public class TextRenderer {
     private static final int BYTE_PER_FLOAT = 4;
     private static final int TEXTCOORD_NUM = 2;
     private static final int VERTEX_COORD_NUM = 3;
 
-    /* we cannot determine the text coordinates directly.
-     * The coordinates should be estimated by the anchor which will be returned by the ARCore.
-     * we start rendering text at the anchor with no adjustment. Indeed, this may cause visual
-     * discomfort. But this is the easiest way to do the stuff.
-     * */
+
     private static final String TAG = TextRenderer.class.getSimpleName();
     private static final String VERTEX_SHADER_NAME = "shaders/text.vert";
     private static final String FRAMENGT_SHADER_NAME = "shaders/text.frag";

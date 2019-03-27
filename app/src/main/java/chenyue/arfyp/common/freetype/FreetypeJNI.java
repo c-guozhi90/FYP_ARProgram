@@ -5,12 +5,10 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
 
 public class FreetypeJNI {
     static {
@@ -39,33 +37,6 @@ public class FreetypeJNI {
     }
 
     public FreetypeJNI() {
-    }
-
-    public static void printChar() {
-        FreetypeJNI[] FreetypeJNI = getFontTexFromC(fontPath + "Ubuntu-B.ttf");
-        for (int i = 0; i < FreetypeJNI.length; i++) {
-            byte[] tempBuffer = FreetypeJNI[i].getBitmap();
-            try {
-                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fontPath + "/testfont.txt"), "utf8"));
-                for (int row = 0; row < FreetypeJNI[i].getHeight(); row++) {
-                    for (int col = 0; col < FreetypeJNI[i].getWidth(); col++) {
-                        if ((int) tempBuffer[row * FreetypeJNI[i].getWidth() + col] != 0) {
-                            bw.write('+');
-                            System.out.print("+");
-                        } else {
-                            bw.write('-');
-                            System.out.print("-");
-                        }
-                    }
-                    bw.write('\n');
-                    bw.flush();
-                    System.out.println();
-                }
-                bw.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     /**
