@@ -386,7 +386,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                         if (!augmentedImageMap.containsKey(augmentedImage.getIndex())) {
                             String facility_name = augmentedImage.getName();
                             facility_name = facility_name.substring(0, facility_name.indexOf('.'));
-                            InformationManager info = new InformationManager(facility_name);
+                            InformationManager info = new InformationManager(facility_name, "events");
                             augmentedImageMap.put(
                                     augmentedImage.getIndex(), Pair.create(augmentedImage, info));
                         }

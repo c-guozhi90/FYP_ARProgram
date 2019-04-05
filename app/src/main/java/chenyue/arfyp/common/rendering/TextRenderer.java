@@ -115,7 +115,7 @@ public class TextRenderer {
         GLES20.glEnable(GLES20.GL_BLEND);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         // set every char coordinates and draw
-        synchronized (informationManager.getInformationArray()) {
+        synchronized (informationManager.getEventArray()) {
             String facilityName = informationManager.getFacilityName();
             // draw the facility name
             drawSentence(facilityName, originPos, 1.0f);
@@ -123,7 +123,7 @@ public class TextRenderer {
             // draw events info only when they are expended
             if (informationManager.isExpended()) {
                 originPos[0] += 0.02f;
-                ArrayList<String> events = informationManager.getInformationArray();
+                ArrayList<String> events = informationManager.getEventArray();
 
                 // draw the evens holding in facility
                 for (String event : events) {

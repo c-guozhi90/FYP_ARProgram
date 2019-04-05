@@ -5,34 +5,58 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.function.Consumer;
 
 public class InformationManager {
     private String facilityName;
-    private ArrayList<String> informationArray = new ArrayList<>();
+    private ArrayList<String> eventArray = new ArrayList<>();  // events being held inside the facility
+    private Map<String, String> facilityDetails = new HashMap<>();  // other detailed information about the facility, like height
     private boolean expended = true;
 
-    public InformationManager(String facilityName) {
-        this.informationArray.add(0, "connecting network...");
+    public InformationManager(String facilityName, String target) {
+        this.eventArray.add(0, "connecting network...");
         this.facilityName = facilityName;
-        new NetworkEnquiry(facilityName, this).start();
+        new NetworkEnquiry(facilityName, target, this).start();
     }
 
-    public void setInformationArray(JSONArray informationArray) throws JSONException {
-        this.informationArray.clear();
-        for (int idx = 0; idx < informationArray.length(); idx++) {
-            JSONObject eventItem = informationArray.getJSONObject(idx);
+    public void setEventArray(JSONArray eventArray) throws JSONException {
+        this.eventArray.clear();
+        for (int idx = 0; idx < eventArray.length(); idx++) {
+            JSONObject eventItem = eventArray.getJSONObject(idx);
             String eventString = String.format("%s  time: %s", eventItem.getString("event_name"), eventItem.getString("time"));
-            this.informationArray.add(idx, eventString);
+            this.eventArray.add(idx, eventString);
         }
     }
 
-    public void setInformationArray(String message) {
-        informationArray.clear();
-        informationArray.add(0, message);
+    public void setFailedMessage(String message) {
+        eventArray.clear();
+        eventArray.add(0, message);
     }
 
-    public ArrayList<String> getInformationArray() {
-        return informationArray;
+    public void setFacilityDetails(JSONArray informationArray) throws JSONException {
+        facilityDetails.clear();
+        for (int idx = 0; idx < informationArray.length(); idx++) {
+            JSONObject details = informationArray.getJSONObject(idx);
+            Iterator<String> keys = details.keys();
+            keys.forEachRemaining(new Consumer<String>() {
+                @Override
+                public void accept(String key) {
+                    try {
+                        String property = details.getString(key);
+                        facilityDetails.put(key, property);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    }
+
+    public ArrayList<String> getEventArray() {
+        return eventArray;
     }
 
     public String getFacilityName() {
@@ -41,6 +65,10 @@ public class InformationManager {
 
     public void setFacilityName(String facilityName) {
         this.facilityName = facilityName;
+    }
+
+    public Map<String, String> getFacilityDetails() {
+        return facilityDetails;
     }
 
     public boolean isExpended() {

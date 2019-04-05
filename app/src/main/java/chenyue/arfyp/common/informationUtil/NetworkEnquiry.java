@@ -12,19 +12,22 @@ import java.net.URL;
 public class NetworkEnquiry extends Thread {
     private String facilityName; // the facility name that users are interested in
     private InformationManager informationManager;
+    private String target;
 
-    public NetworkEnquiry(String facilityName, InformationManager informationManager) {
+    public NetworkEnquiry(String facilityName, String target, InformationManager informationManager) {
         this.facilityName = facilityName;
         this.informationManager = informationManager;
+        this.target = target;
     }
 
     @Override
     public void run() {
-        String target = "https://fypserverentry.herokuapp.com/api/events/" + this.facilityName;
+        String enquiryAddress = "https://fypserverentry.herokuapp.com/api/" + target + "/" + this.facilityName;
+
         String information = "";
         String temp;
         try {
-            URL url = new URL(target);
+            URL url = new URL(enquiryAddress);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.connect();
@@ -37,14 +40,22 @@ public class NetworkEnquiry extends Thread {
             isr.close();
             connection.disconnect();
             JSONArray returnedJSONArray = new JSONArray(information);
-            synchronized (informationManager.getInformationArray()) {
-                informationManager.setInformationArray(returnedJSONArray);
+            if (target.equals("events"))
+                synchronized (informationManager.getEventArray()) {
+                    informationManager.setEventArray(returnedJSONArray);
+                }
+            else {
+                synchronized (informationManager.getFacilityDetails()) {
+                    informationManager.setFacilityDetails(returnedJSONArray);
+                }
             }
 
         } catch (IOException | JSONException e) {
             e.printStackTrace();
-            synchronized (informationManager.getInformationArray()) {
-                informationManager.setInformationArray("information enquiry failed");
+            if (target.equals("events")) {
+                synchronized (informationManager.getEventArray()) {
+                    informationManager.setFailedMessage("information enquiry failed");
+                }
             }
         }
     }
