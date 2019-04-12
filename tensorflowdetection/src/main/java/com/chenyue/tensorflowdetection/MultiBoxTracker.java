@@ -51,6 +51,8 @@ public class MultiBoxTracker {
     private final Queue<Integer> availableColors = new LinkedList<Integer>();
 
     final List<Pair<Float, RectF>> screenRects = new LinkedList<Pair<Float, RectF>>();
+    private int screenWidth;
+    private int screenHeight;
 
 
     private static class TrackedRecognition {
@@ -105,16 +107,16 @@ public class MultiBoxTracker {
     public synchronized void draw(final Canvas canvas) {
         final boolean rotated = sensorOrientation % 180 == 90;
         //logger.i("multiplier: %f", multiplier);
-        int width = rotated ? canvas.getWidth() : canvas.getHeight();
-        int height = rotated ? canvas.getHeight() : canvas.getWidth();
-        logger.i("width: %d, height: %d", width, height);
+        screenWidth = rotated ? canvas.getWidth() : canvas.getHeight();
+        screenHeight = rotated ? canvas.getHeight() : canvas.getWidth();
+        //logger.i("width: %d, height: %d", screenWidth, screenHeight);
 
         frameToCanvasMatrix =
                 TensorflowUtils.getTransformationMatrix(
                         frameWidth,
                         frameHeight,
-                        width,
-                        height,
+                        screenWidth,
+                        screenHeight,
                         sensorOrientation,
                         false);
         for (final TrackedRecognition recognition : trackedObjects) {
@@ -168,18 +170,21 @@ public class MultiBoxTracker {
             return;
         }
 
-        trackedObjects.clear();
-        for (final Pair<Float, Recognition> potential : rectsToTrack) {
-            final TrackedRecognition trackedRecognition = new TrackedRecognition();
-            trackedRecognition.detectionConfidence = potential.first;
-            trackedRecognition.location = new RectF(potential.second.getLocation());
-            trackedRecognition.title = potential.second.getTitle();
-            trackedRecognition.color = COLORS[trackedObjects.size()];
-            trackedObjects.add(trackedRecognition);
+        synchronized (trackedObjects) {
+            trackedObjects.clear();
+            for (final Pair<Float, Recognition> potential : rectsToTrack) {
+                final TrackedRecognition trackedRecognition = new TrackedRecognition();
+                trackedRecognition.detectionConfidence = potential.first;
+                trackedRecognition.location = new RectF(potential.second.getLocation());
+                trackedRecognition.title = potential.second.getTitle();
+                trackedRecognition.color = COLORS[trackedObjects.size()];
+                trackedObjects.add(trackedRecognition);
 
-            if (trackedObjects.size() >= COLORS.length) {
-                break;
+                if (trackedObjects.size() >= COLORS.length) {
+                    break;
+                }
             }
+            trackedObjects.notifyAll();
         }
     }
 
@@ -191,7 +196,36 @@ public class MultiBoxTracker {
         frameHeight = height;
     }
 
+    public int getScreenWidth() {
+        return screenWidth;
+    }
+
+    public int getScreenHeight() {
+        return screenHeight;
+    }
+
+
     public void setSensorOrientation(int rotation) {
         this.sensorOrientation = rotation;
     }
+
+    public List<TrackedRecognition> getTrackedObjects() {
+        return trackedObjects;
+    }
+
+    public List<Pair<RectF, String>> getItemInTrackedObjects() {
+        synchronized (trackedObjects) {
+            if (screenHeight == 0 || screenWidth == 0 || trackedObjects.size() == 0) return null;
+            List<Pair<RectF, String>> trackedList = new LinkedList<>();
+            for (TrackedRecognition tracked : trackedObjects) {
+                RectF location = tracked.location;
+                // filter those objects near the edges.
+                if (location.top < 10 || location.left < 10 || screenHeight - location.bottom < 10 || screenWidth - location.right < 10)
+                    continue;
+                trackedList.add(new Pair<RectF, String>(location, tracked.title));
+            }
+            return trackedList;
+        }
+    }
+
 }

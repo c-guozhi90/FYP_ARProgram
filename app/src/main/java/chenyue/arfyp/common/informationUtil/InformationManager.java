@@ -46,7 +46,10 @@ public class InformationManager {
                 public void accept(String key) {
                     try {
                         String property = details.getString(key);
-                        facilityDetails.put(key, property);
+                        synchronized (facilityDetails) {
+                            facilityDetails.put(key, property);
+                            notifyAll();
+                        }
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }

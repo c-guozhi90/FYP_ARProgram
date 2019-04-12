@@ -25,6 +25,8 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.media.Image;
@@ -87,6 +89,7 @@ import chenyue.arfyp.common.informationUtil.InformationManager;
 import chenyue.arfyp.common.rendering.BackgroundRenderer;
 import chenyue.arfyp.common.rendering.PlaneRenderer;
 import chenyue.arfyp.common.rendering.TextRenderer;
+import chenyue.arfyp.navigation.DistanceEstimation;
 
 import static com.google.ar.core.TrackingState.TRACKING;
 
@@ -124,8 +127,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private Map<Integer, Pair<AugmentedImage, InformationManager>> augmentedImageMap = new HashMap<>();
 
     // Tensorflow related
-    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/frozen_inference_graph.pb";
-    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/facility_labels_list.txt";
+    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/ssd_mobilenet_v1_android_export.pb";
+    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/coco_labels_list.txt";
     private Classifier detector;
     private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
     private static final int TF_INPUT_SIZE = 300;
@@ -134,6 +137,14 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private MultiBoxTracker tracker;
     private Runnable detection = null;
     private CameraCharacteristics cameraCharacteristics = null;
+
+    // navigation related
+    private DistanceEstimation estimator;
+    private SensorManager sensorManager;
+    private Sensor gSensor;
+    private Sensor aSensor;
+    private static int glScreenHeight;
+    private static int glScreenWidth;
 
     // Anchors created from taps used for object placing with a given color.
     private static class ColoredAnchor {
@@ -171,6 +182,14 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         // Set up tracking related stuff
         trackingView = findViewById(R.id.trackingView);
         tracker = new MultiBoxTracker(this);
+        estimator = new DistanceEstimation(tracker);
+
+        // set up navigation related stuff
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        gSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(estimator, gSensor, SensorManager.SENSOR_DELAY_NORMAL);
 
         installRequested = false;
     }
@@ -178,7 +197,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     @Override
     protected void onResume() {
         super.onResume();
-
+        sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(estimator, gSensor, SensorManager.SENSOR_DELAY_NORMAL);
         if (session == null) {
             Exception exception = null;
             String message = null;
@@ -259,6 +279,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             glView.onPause();
             session.pause();
         }
+        sensorManager.unregisterListener(estimator);
     }
 
     @Override
@@ -307,7 +328,9 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         displayRotationHelper.onSurfaceChanged(width, height);
         //GLES20.glViewport(0, 0, width, height);
-        Log.d(TAG, "width: " + width + "height: " + height);
+        //Log.d(TAG, "width: " + width + "height: " + height);
+        glScreenWidth=width;
+        glScreenHeight=height;
     }
 
     @Override
@@ -426,6 +449,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
             /* tensorflow detection end */
 
+            /* distance estimation start*/
+            estimator.updateCameraParams(camera);
+            estimator.start();
+            /* distance estimation end*/
+
         } catch (NullPointerException npe) {
             Log.e(TAG, "something wrong!");
         } catch (Throwable t) {
@@ -434,8 +462,9 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         }
     }
 
-    static int count = 0;
+    static int count = 10;
 
+    // we have to define tensorflowThread in MainAcitivity because some variables like tracker can only be accessed within this class.
     private Runnable tensorflowThread(Image image) {
         Runnable runnable = new Runnable() {
             @Override
@@ -452,6 +481,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                         size.getWidth(), size.getHeight(), TF_INPUT_SIZE, TF_INPUT_SIZE, sensorOrientation, false);
                 cropToFrameTransform = new Matrix();
                 frameToCropTransform.invert(cropToFrameTransform);
+
+                // the bug can be fixed if the width is changed to 360, use another createbitmap method to do this
                 Bitmap originBitmap = Bitmap.createBitmap(
                         rgbBytes, size.getWidth(), size.getHeight(), Bitmap.Config.ARGB_8888);
                 if (count < 10)
@@ -488,7 +519,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 tracker.setFrameWidth(image.getWidth());
                 tracker.setFrameHeight(image.getHeight());
                 tracker.setSensorOrientation(sensorOrientation);
-                tracker.trackResults(mappedRecognitions);
+                tracker.trackResults(mappedRecognitions);   // we can notify the distance estimator after updating the trackedResults
                 logger.d("size of collection %d", mappedRecognitions.size());
                 // draw it
                 trackingView.refreshView();
