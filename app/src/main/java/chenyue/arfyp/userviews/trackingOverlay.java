@@ -1,4 +1,4 @@
-package chenyue.arfyp.helloar;
+package chenyue.arfyp.userviews;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -61,5 +61,4 @@ public class trackingOverlay extends SurfaceView implements SurfaceHolder.Callba
                 holder.unlockCanvasAndPost(canvas);
         }
     }
-
 }

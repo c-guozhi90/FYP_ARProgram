@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package chenyue.arfyp.helloar;
+package chenyue.arfyp.userviews;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -39,6 +40,7 @@ import android.util.Pair;
 import android.util.Size;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.chenyue.tensorflowdetection.Classifier;
@@ -70,6 +72,7 @@ import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationExceptio
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -89,6 +92,7 @@ import chenyue.arfyp.common.informationUtil.InformationManager;
 import chenyue.arfyp.common.rendering.BackgroundRenderer;
 import chenyue.arfyp.common.rendering.PlaneRenderer;
 import chenyue.arfyp.common.rendering.TextRenderer;
+import chenyue.arfyp.navigation.CoordsCalculation;
 import chenyue.arfyp.navigation.DistanceEstimation;
 
 import static com.google.ar.core.TrackingState.TRACKING;
@@ -99,7 +103,8 @@ import static com.google.ar.core.TrackingState.TRACKING;
  * plane to place a 3d model of the Android robot.
  */
 public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
-    public static final boolean NAVIGATION_MODE = false;
+    private static boolean READY_FOR_NEXT_FRAME = true;
+    public static boolean NAVIGATION_MODE = false;
     private static final String TAG = MainActivity.class.getSimpleName();
     public final Context context = this;
 
@@ -107,7 +112,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private Activity mainActivity;
     private GLSurfaceView glView;
     private trackingOverlay trackingView;
+    private MapOverlay mapView;
     private View controlView;
+    private Button search_button;
+    private Button quit_navigation;
+    private Button map_button;
 
     private boolean installRequested;
 
@@ -128,8 +137,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private Map<Integer, Pair<AugmentedImage, InformationManager>> augmentedImageMap = new HashMap<>();
 
     // Tensorflow related
-    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/ssd_mobilenet_v1_android_export.pb";
-    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/coco_labels_list.txt";
+    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/frozen_inference_graph.pb";
+    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/fyp_labels_list.txt";
     private Classifier detector;
     private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
     private static final int TF_INPUT_SIZE = 300;
@@ -141,11 +150,16 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
     // navigation related
     private DistanceEstimation estimator;
+    private Thread estimatorThread;
+    private CoordsCalculation coordsTracker;
+    private Thread coordsTrackerThread;
+    private Thread drawMapThread;
     private SensorManager sensorManager;
     private Sensor gSensor;
     private Sensor aSensor;
     public static int glScreenHeight;
     public static int glScreenWidth;
+
     public static boolean requireDistanceEstimation = true; // distance estimator will check it before task
 
     // Anchors created from taps used for object placing with a given color.
@@ -166,7 +180,10 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mainActivity = this;
-        glView = findViewById(R.id.surfaceview);
+        glView = findViewById(R.id.surface_view);
+        mapView = findViewById(R.id.map_view);
+
+
         displayRotationHelper = new DisplayRotationHelper(/*context=*/ this);
 
         // Set up tap listener.
@@ -182,17 +199,52 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         glView.setWillNotDraw(false);
 
         // Set up tracking related stuff
-        trackingView = findViewById(R.id.trackingView);
         tracker = new MultiBoxTracker(this);
-        estimator = new DistanceEstimation(tracker);
-
-        // set up navigation related stuff
+        estimator = new DistanceEstimation(this, this, tracker);
+        coordsTracker = new CoordsCalculation();
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         gSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(estimator, gSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        trackingView = findViewById(R.id.tracking_view);
 
+
+        // set up navigation related stuff
+
+        //sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_GAME);
+        //sensorManager.registerListener(estimator, gSensor, SensorManager.SENSOR_DELAY_GAME);
+        search_button = findViewById(R.id.search_button);
+        quit_navigation = findViewById(R.id.quit_navigation);
+        map_button = findViewById(R.id.map_button);
+
+
+        search_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // start an activity for searching facilities
+                Intent intent = new Intent(context, SearchActivity.class);
+                estimatorThread = new Thread(estimator);
+                coordsTrackerThread = new Thread(coordsTracker);
+                drawMapThread = new Thread(mapView);
+                intent.putExtra("estimator_thread", (Serializable) estimatorThread);
+                intent.putExtra("coords_tracker_thread", (Serializable) coordsTrackerThread);
+                intent.putExtra("draw_map_thread", (Serializable) drawMapThread);
+                intent.putExtra("quit_navigation_button", (Serializable) quit_navigation);
+                intent.putExtra("search_button", (Serializable) search_button);
+                startActivity(intent);
+            }
+        });
+        quit_navigation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                quitNavigation();
+            }
+        });
+        map_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mapView.setVisibility(View.VISIBLE);
+            }
+        });
         installRequested = false;
     }
 
@@ -265,9 +317,10 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             session = null;
             return;
         }
-
+        estimator.setRequireEstimation(true);
         glView.onResume();
         displayRotationHelper.onResume();
+
     }
 
     @Override
@@ -441,7 +494,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             /* tensorflow detection start */
 
             //Here should be asymmetric detection.
-            if (detection == null) {
+            if (READY_FOR_NEXT_FRAME == true) {
                 Image image = frame.acquireCameraImage();
                 detection = tensorflowThread(image);
                 new Thread(detection).start();
@@ -453,7 +506,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
             /* distance estimation start*/
             estimator.updateCameraParams(camera);
-            estimator.start();
             /* distance estimation end*/
 
         } catch (NullPointerException npe) {
@@ -471,6 +523,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
+                READY_FOR_NEXT_FRAME = false;
                 if (cameraCharacteristics == null) return;
                 int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) - TensorflowUtils.getScreenOrientation(mainActivity);
                 Logger logger = new Logger(TAG);
@@ -528,7 +581,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 originBitmap.recycle();
                 croppedFrame.recycle();
                 image.close();
-                detection = null;
+                READY_FOR_NEXT_FRAME = true;
                 count++;
             }
         };
@@ -632,6 +685,16 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 }
             }
         }
+    }
+
+    private void quitNavigation() {
+        NAVIGATION_MODE = false;
+        estimatorThread.interrupt();
+        coordsTrackerThread.interrupt();
+        drawMapThread.interrupt();
+        quit_navigation.setVisibility(View.INVISIBLE);
+        map_button.setVisibility(View.INVISIBLE);
+        search_button.setVisibility(View.VISIBLE);
     }
 
 }

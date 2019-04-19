@@ -15,7 +15,7 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="chenyue.arfyp.helloar">
+    package="chenyue.arfyp.userviews">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -34,12 +34,13 @@
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
+        android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false"
         tools:ignore="GoogleAppIndexingWarning">
 
         <activity
-            android:name="chenyue.arfyp.helloar.MainActivity"
+            android:name="chenyue.arfyp.userviews.MainActivity"
             android:configChanges="orientation|screenSize"
             android:exported="true"
             android:screenOrientation="locked"
@@ -48,6 +49,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name="chenyue.arfyp.userviews.SearchActivity"
+            android:label="search a facility">
+
         </activity>
         <!-- This tag indicates that this application requires ARCore.  This results in the Google Play
              Store downloading and installing ARCore along with the application. -->

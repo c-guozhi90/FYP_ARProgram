@@ -14,26 +14,72 @@
    limitations under the License.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="chenyue.arfyp.helloar.MainActivity">
+    tools:context="chenyue.arfyp.userviews.MainActivity">
 
-  <android.opengl.GLSurfaceView
-      android:id="@+id/surfaceview"
-      android:layout_width="fill_parent"
-      android:layout_height="fill_parent"
-      android:layout_gravity="top" />
+    <android.opengl.GLSurfaceView
+        android:id="@+id/surface_view"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_gravity="top" />
 
-  <chenyue.arfyp.helloar.trackingOverlay
-      android:id="@+id/trackingView"
-      android:layout_width="match_parent"
-      android:layout_height="match_parent" />
+    <chenyue.arfyp.userviews.trackingOverlay
+        android:id="@+id/tracking_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
-  <View
-      android:id="@+id/controlView"
-      android:layout_width="match_parent"
-      android:layout_height="match_parent"
-      android:visibility="invisible" />
+    <chenyue.arfyp.userviews.MapOverlay
+        android:id="@+id/map_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="true"
+        android:visibility="invisible" />
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/control_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent">
+
+        <Button
+            android:id="@+id/search_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#30aaaaaa"
+            android:text="search"
+            android:textColor="@android:color/white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:id="@+id/quit_navigation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#30aaaaaa"
+            android:text="quit navigation"
+            android:textColor="@android:color/white"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+        <Button
+            android:id="@+id/map_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#30aaaaaa"
+            android:text="floor plan"
+            android:textColor="@android:color/white"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+    </android.support.constraint.ConstraintLayout>
+
+    <View
+        android:id="@+id/debug_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
 
 </FrameLayout>

@@ -23,6 +23,7 @@ import android.graphics.Paint;
 import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
+import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -105,6 +106,8 @@ public class MultiBoxTracker {
     }
 
     public synchronized void draw(final Canvas canvas) {
+        // clear the previous marks
+        canvas.drawColor(0, PorterDuff.Mode.CLEAR);
         final boolean rotated = sensorOrientation % 180 == 90;
         //logger.i("multiplier: %f", multiplier);
         screenWidth = rotated ? canvas.getWidth() : canvas.getHeight();
