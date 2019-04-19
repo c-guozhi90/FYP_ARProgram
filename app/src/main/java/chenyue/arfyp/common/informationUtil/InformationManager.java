@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 public class InformationManager {
     private String facilityName;
     private ArrayList<String> eventArray = new ArrayList<>();  // events being held inside the facility
-    private Map<String, String> facilityDetails = new HashMap<>();  // other detailed information about the facility, like height
+    private Map<String, String> facilityDetails = null;  // other detailed information about the facility, like height
     private boolean expended = true;
 
     public InformationManager(String facilityName, String target) {
@@ -37,24 +37,26 @@ public class InformationManager {
     }
 
     public void setFacilityDetails(JSONArray informationArray) throws JSONException {
-        facilityDetails.clear();
-        for (int idx = 0; idx < informationArray.length(); idx++) {
-            JSONObject details = informationArray.getJSONObject(idx);
-            Iterator<String> keys = details.keys();
-            keys.forEachRemaining(new Consumer<String>() {
-                @Override
-                public void accept(String key) {
-                    try {
-                        String property = details.getString(key);
-                        synchronized (facilityDetails) {
+        synchronized (facilityDetails) {
+            if (facilityDetails == null)
+                facilityDetails = new HashMap<>();
+            for (int idx = 0; idx < informationArray.length(); idx++) {
+                JSONObject details = informationArray.getJSONObject(idx);
+                Iterator<String> keys = details.keys();
+                facilityDetails.clear();
+                keys.forEachRemaining(new Consumer<String>() {
+                    @Override
+                    public void accept(String key) {
+                        try {
+                            String property = details.getString(key);
                             facilityDetails.put(key, property);
-                            notifyAll();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
                     }
-                }
-            });
+                });
+            }
+            facilityDetails.notifyAll();
         }
     }
 

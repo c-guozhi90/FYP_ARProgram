@@ -1,6 +1,5 @@
 package chenyue.arfyp.navigation;
 
-import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -9,10 +8,8 @@ import android.hardware.SensorManager;
 import android.util.Pair;
 
 import com.chenyue.tensorflowdetection.MultiBoxTracker;
-import com.chenyue.tensorflowdetection.TensorflowUtils;
 import com.google.ar.core.Camera;
 import com.google.ar.core.CameraIntrinsics;
-import com.google.ar.core.Pose;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,6 +29,8 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
     private CameraIntrinsics intrinsics;
     private float[] magneticFieldValues;
     private float[] accelerometerValues;
+    private double orientationAngle;
+    private boolean requiredEstimation = true;
 
     // not essential
     public void updateCameraParams(Camera camera) {
@@ -59,11 +58,11 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
 
     // in this function, we use the default size of ARCore Image(640*480) to estimate the distance
     public double estimateDistance(DetailedObject object) {
-        double realHeight;
+        double realHeight, objectFacing;
         //double objectFacing;
         synchronized (object.informationSet.getFacilityDetails()) {
             realHeight = Double.parseDouble(object.informationSet.getFacilityDetails().get("realHeight"));
-            //objectFacing = Double.parseDouble((object.informationSet.getFacilityDetails().get("objectFacing")));
+            objectFacing = Double.parseDouble((object.informationSet.getFacilityDetails().get("objectFacing")));
         }
 
         RectF location = object.location;
@@ -76,20 +75,23 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
         float focalLength[] = intrinsics.getFocalLength();
         double nearestOG = realHeight * focalLength[1] / location.height();
         double angle_oag = Math.atan(focalLength[1] / location.height() / 2);
-        double nearestOD = (nearestOG / Math.sin(angle_oag) - realHeight * Math.sin(EulerDegrees[1])) * Math.sin(angle_oag + EulerDegrees[1]);
+        double nearestOD = (nearestOG / Math.sin(angle_oag) - realHeight * Math.sin(EulerDegrees[1] + 90)) * Math.sin(angle_oag + EulerDegrees[1]);
         //double orientedDifference = Math.abs(-objectFacing - EulerDegrees[0]);
         // calculate the OD in convenient way(lose accuracy). if the camera dose not facing the object, the error will increase.
-        double calibratedOD = nearestOD / Math.sin(Math.atan(focalLength[0]/Math.abs(location.centerX()-O[0])));
-
-        // for further work, some concepts must understand. 1. Pose(ARCore) 2. fireBase
-        return calibratedOD;
+        double calibratedOD = nearestOD / Math.sin(Math.atan(focalLength[0] / Math.abs(location.centerX() - O[0])));
+        double BJ = nearestOD * 0.5 * location.width() / focalLength[0];
+        orientationAngle = adjustAngle(DistanceEstimation.EulerDegrees[0] + Math.atan(Math.abs(O[0] - location.centerX()) / focalLength[0]));
+        double angle_JKB = Math.abs(adjustAngle(objectFacing + 0.5 * Math.PI) - orientationAngle);
+        double angle_kBJ = Math.abs(adjustAngle(DistanceEstimation.EulerDegrees[0] + 0.5 * Math.PI) - adjustAngle(objectFacing + 0.5 * Math.PI));
+        double JK = BJ * Math.sin(angle_kBJ) / Math.sin(angle_JKB);
+        return calibratedOD + JK;
     }
 
     public void run() {
         // Because the network inquiry is time consuming, it must start a new sub-thread for every detected object.
         // But here, a new sub-thread will be started automatically within the constructor of informationManager.
         List<Pair<RectF, String>> qualifiedTrackedObjects = null;
-        while (true) {  // here, may set a boolean variable
+        while (requiredEstimation) {  // here, may set a boolean variable
             // 1. get qualified detected object(not near the edge) from tracker in sync manner
             synchronized (tracker.getTrackedObjects()) {
                 while (qualifiedTrackedObjects == null || qualifiedTrackedObjects.size() == 0) {
@@ -103,7 +105,7 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
                 }
             }
             int inquiryCount = 0;
-            // 2. for every new detected object, start an information inquiry, and added into a hashMap
+            // 2. for every new detected object, start an information inquiry, and add into a hashMap
             for (Pair<RectF, String> object : qualifiedTrackedObjects) {
                 String objectName = object.second;
                 if (!detailedObjectList.containsKey(objectName)) {
@@ -122,26 +124,28 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
             // remove useless objects if any.
             while (inquiryCount > 0) {
                 for (String key : detailedObjectList.keySet()) {
-                    String realHeight;
+                    if (!qualifiedTrackedObjects.contains(key)) {
+                        detailedObjectList.remove(key); // remove those objects that are out of tracking
+                        continue;
+                    }
                     do {
                         synchronized (detailedObjectList.get(key).informationSet.getFacilityDetails()) {
-                            realHeight = detailedObjectList.get(key).informationSet.getFacilityDetails().get("realHeight");
                             try {
-                                detailedObjectList.get(key).informationSet.getFacilityDetails().wait();
+                                if (detailedObjectList.get(key).informationSet.getFacilityDetails() == null)
+                                    detailedObjectList.get(key).informationSet.getFacilityDetails().wait();
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         }
-                    } while (realHeight == null);
-                    inquiryCount--;
-                    if (!qualifiedTrackedObjects.contains(key)) {
-                        detailedObjectList.remove(key); // remove those objects that are out of tracking
                     }
+                    while (detailedObjectList.get(key).informationSet.getFacilityDetails() == null);
+                    inquiryCount--;
                 }
             }
             // 4. start estimating distance. estimate five times and then calculate its average value
             for (String key : detailedObjectList.keySet()) {
                 DetailedObject detailedObject = detailedObjectList.get(key);
+                if (detailedObject == null) continue;
                 if (detailedObject.estimationCounts >= 5) {
                     Arrays.sort(detailedObject.distance);
                     detailedObject.averageDistance = (detailedObject.distance[0] + detailedObject.distance[1] + detailedObject.distance[2]) / 3;
@@ -150,6 +154,34 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
                 detailedObject.distance[detailedObject.estimationCounts] = estimateDistance(detailedObject);
                 detailedObject.estimationCounts++;
             }
+            // 5. calculate the initial average coordinates of user and start navigation.
+            // place the calculation here to simplify multithreading cooperation
+            int objectNum = 0;
+            double[] sumCoords = new double[2];
+            if (detailedObjectList.size() == 0) continue;
+            for (String key : detailedObjectList.keySet()) {
+                if (!MainActivity.NAVIGATION_MODE) break;
+                DetailedObject detailedObject = detailedObjectList.get(key);
+                if (detailedObject == null && detailedObject.averageDistance >= -1000d && detailedObject.averageDistance <= -1000)
+                    continue;
+                double[] objectCoords = new double[2];
+                objectCoords[0] = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("coordE"));
+                objectCoords[1] = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("coordN"));
+                sumCoords[0] = sumCoords[0] + objectCoords[0] + detailedObject.averageDistance * Math.sin(adjustAngle(Math.PI - orientationAngle));
+                sumCoords[1] = sumCoords[1] + objectCoords[1] + detailedObject.averageDistance * Math.cos(adjustAngle(Math.PI - orientationAngle));
+                objectNum++;
+                CoordsCalculation.floor = Integer.parseInt(detailedObject.informationSet.getFacilityDetails().get("floor"));
+
+                // when facing north, the angle is 0, when facing south, the angle will be 180, east is 90, west is -90
+            }
+            // after calculation for initCoordinates, it can start the navigation(by setting the readyForTracking with true)
+            // Rotation about the y axis. that is because the initial coordinates system in ARCore for camera is special.
+            // Its Y axis is pointing up, X axis is pointing to right, and Z axis is pointing to forward
+            CoordsCalculation.setRotationOffset(DistanceEstimation.EulerDegrees[0]);
+            CoordsCalculation.initCoordinates[0] = sumCoords[0] / objectNum;
+            CoordsCalculation.initCoordinates[1] = sumCoords[1] / objectNum;
+            CoordsCalculation.readyForTracking = true;
+            requiredEstimation = false;
         }
     }
 
@@ -171,6 +203,14 @@ public class DistanceEstimation extends Thread implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    public static double adjustAngle(double angle) {
+        if (angle > Math.PI)
+            return angle - Math.PI;
+        else if (angle < -Math.PI)
+            return angle + Math.PI;
+        else return angle;
     }
 }
 

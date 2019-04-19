@@ -99,6 +99,7 @@ import static com.google.ar.core.TrackingState.TRACKING;
  * plane to place a 3d model of the Android robot.
  */
 public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
+    public static final boolean NAVIGATION_MODE = false;
     private static final String TAG = MainActivity.class.getSimpleName();
     public final Context context = this;
 
@@ -143,8 +144,9 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private SensorManager sensorManager;
     private Sensor gSensor;
     private Sensor aSensor;
-    private static int glScreenHeight;
-    private static int glScreenWidth;
+    public static int glScreenHeight;
+    public static int glScreenWidth;
+    public static boolean requireDistanceEstimation = true; // distance estimator will check it before task
 
     // Anchors created from taps used for object placing with a given color.
     private static class ColoredAnchor {
@@ -329,8 +331,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         displayRotationHelper.onSurfaceChanged(width, height);
         //GLES20.glViewport(0, 0, width, height);
         //Log.d(TAG, "width: " + width + "height: " + height);
-        glScreenWidth=width;
-        glScreenHeight=height;
+        glScreenWidth = width;
+        glScreenHeight = height;
     }
 
     @Override
