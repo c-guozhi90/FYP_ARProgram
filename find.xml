@@ -1,7 +1,7 @@
 <application>
   <component name="FindSettings">
-    <option name="customScope" value="File '.../app/src/main/java/chenyue/arfyp/helloar/MainActivity.java [app]'" />
-    <option name="defaultScopeName" value="File '.../app/src/main/java/chenyue/arfyp/helloar/MainActivity.java [app]'" />
-    <option name="SEARCH_SCOPE" value="File '.../app/src/main/java/chenyue/arfyp/helloar/MainActivity.java [app]'" />
+    <option name="customScope" value="File '.../app/src/main/java/chenyue/arfyp/userviews/MainActivity.java [app]'" />
+    <option name="defaultScopeName" value="File '.../app/src/main/java/chenyue/arfyp/userviews/MainActivity.java [app]'" />
+    <option name="SEARCH_SCOPE" value="File '.../app/src/main/java/chenyue/arfyp/userviews/MainActivity.java [app]'" />
   </component>
 </application>
