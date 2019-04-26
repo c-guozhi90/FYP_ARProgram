@@ -1,9 +1,13 @@
 package chenyue.arfyp.userviews;
 
 import android.app.Activity;
+import android.nfc.Tag;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.JsonReader;
+import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -25,12 +29,15 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.Socket;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.Consumer;
 
 import chenyue.arfyp.navigation.CoordsCalculation;
 
-public class SearchActivity extends Activity implements View.OnClickListener {
+public class SearchActivity extends Activity implements View.OnClickListener, AdapterView.OnItemClickListener {
+    private final static String TAG = "Search Activity";
     private ListView searchListView;
     private EditText searchInput;
     private Button searchButton;
@@ -38,33 +45,27 @@ public class SearchActivity extends Activity implements View.OnClickListener {
     private Button goThereButton;
     private ArrayAdapter<String> searchResultsItems;
     private boolean EnquiryFinished = false;
-    private Thread estimatorThread;
-    private Thread coordsThread;
-    private Thread drawMapThread;
-    private Button quitNavigationBtn;
-    private Button searchBtnInMain;
+    private Handler handler;
+    public static int START_FOR_NAVIGATION = 1;
+    private int selected = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
+        handler = new Handler();
         searchListView = findViewById(R.id.search_list_view);
         searchInput = findViewById(R.id.search_input);
         searchButton = findViewById(R.id.search_result_button);
         goThereButton = findViewById(R.id.go_there_button);
-        cancelButton = cancelButton.findViewById(R.id.cancel_button);
+        cancelButton = findViewById(R.id.cancel_button);
         searchButton.setOnClickListener(this);
         cancelButton.setOnClickListener(this);
         goThereButton.setOnClickListener(this);
         String[] initList = {"no result"};
-        searchResultsItems = new ArrayAdapter<>(this, R.layout.activity_search, initList);
+        searchResultsItems = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>(Arrays.asList(initList)));
         searchListView.setAdapter(searchResultsItems);
-        searchListView.setOnClickListener(this);
-        estimatorThread = (Thread) savedInstanceState.get("estimator_thread");
-        coordsThread = (Thread) savedInstanceState.get("coords_tracker_thread");
-        drawMapThread = (Thread) savedInstanceState.get("draw_map_thread");
-        quitNavigationBtn = (Button) savedInstanceState.get("quit_navigation_button");
-        searchBtnInMain = (Button) savedInstanceState.get("search_button");
+        searchListView.setOnItemClickListener(this);
     }
 
     @Override
@@ -84,12 +85,9 @@ public class SearchActivity extends Activity implements View.OnClickListener {
                 this.finish();
                 break;
             case R.id.go_there_button:
-                startNavigation(searchListView.getSelectedItemPosition());
+                startNavigation(selected);
+                setResult(START_FOR_NAVIGATION);
                 finish();
-                break;
-            case R.id.search_list_view:
-                goThereButton.setVisibility(View.VISIBLE);
-            default:
                 break;
         }
     }
@@ -97,7 +95,7 @@ public class SearchActivity extends Activity implements View.OnClickListener {
     private void searchFacilityOnline(String input) {
         new Thread(() -> {
             String enquiryAddress = "https://fypserverentry.herokuapp.com/api/search/" + input;
-
+            Log.d(TAG, input);
             String result = "";
             String temp;
             try {
@@ -117,25 +115,30 @@ public class SearchActivity extends Activity implements View.OnClickListener {
                 for (int idx = 0; idx < returnedJSONArray.length(); idx++) {
                     JSONObject details = returnedJSONArray.getJSONObject(idx);
                     Iterator<String> keys = details.keys();
-                    synchronized (searchResultsItems) {
-                        searchResultsItems.clear();
-                        keys.forEachRemaining(new Consumer<String>() {
-                            @Override
-                            public void accept(String key) {
-                                try {
-                                    if (key.equals("facility_name")) {
-                                        String property = details.getString(key);
-                                        searchResultsItems.add(property);
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            synchronized (searchResultsItems) {
+                                searchResultsItems.clear();
+                                keys.forEachRemaining(new Consumer<String>() {
+                                    @Override
+                                    public void accept(String key) {
+                                        try {
+                                            if (key.equals("facility_name")) {
+                                                Log.d(TAG, "here");
+                                                String property = details.getString(key);
+                                                searchResultsItems.add(property);
+                                            }
+                                        } catch (JSONException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
-                                }
+                                });
+                                searchResultsItems.notifyDataSetChanged();
+                                EnquiryFinished = true;
                             }
-                        });
-                        searchResultsItems.notifyDataSetChanged();
-                        EnquiryFinished = true;
-                    }
-
+                        }
+                    });
                 }
 
             } catch (IOException | JSONException e) {
@@ -154,14 +157,20 @@ public class SearchActivity extends Activity implements View.OnClickListener {
                     outputText += ".";
                 }
                 count = (count + 1) % 4;
-                try {
-                    synchronized (searchResultsItems) {
-                        if (EnquiryFinished)
-                            break; // make sure the network enquiry is not finished
-                        searchResultsItems.clear();
-                        searchResultsItems.add(outputText);
-                        searchResultsItems.notifyDataSetChanged();
+                String finalOutputText = outputText;
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        synchronized (searchResultsItems) {
+                            if (!EnquiryFinished) {
+                                searchResultsItems.clear();
+                                searchResultsItems.add(finalOutputText);
+                                searchResultsItems.notifyDataSetChanged();
+                            }
+                        }
                     }
+                });
+                try {
                     Thread.sleep(250);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -170,14 +179,14 @@ public class SearchActivity extends Activity implements View.OnClickListener {
         }).start();
     }
 
-    private void searchNavigationPath(double[] start, int floor, String target) {
+    private void searchNavigationPath(double[] startPoint, int floor, String target) {
         try {
             Socket newEnquiry = new Socket("localhost", 80);    // set up a website
             DataOutputStream dos = new DataOutputStream(newEnquiry.getOutputStream());
             DataInputStream dis = new DataInputStream(newEnquiry.getInputStream());
             dos.writeInt(0); // operation code
-            dos.writeDouble(start[0]);
-            dos.writeDouble(start[1]);
+            dos.writeDouble(startPoint[0]);
+            dos.writeDouble(startPoint[1]);
             dos.writeInt(floor);
             dos.writeUTF(target);
             String results = dis.readUTF();
@@ -193,9 +202,6 @@ public class SearchActivity extends Activity implements View.OnClickListener {
 
     private void startNavigation(int selectedTarget) {
         MainActivity.NAVIGATION_MODE = true;
-        estimatorThread.start();
-        coordsThread.start();
-        drawMapThread.start();
         new Thread(() -> {
             String target = searchResultsItems.getItem(selectedTarget);
             while (true) {
@@ -212,7 +218,11 @@ public class SearchActivity extends Activity implements View.OnClickListener {
             }
 
         }).start();
-        quitNavigationBtn.setVisibility(View.VISIBLE);
-        searchBtnInMain.setVisibility(View.INVISIBLE);
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        goThereButton.setVisibility(View.VISIBLE);
+        selected = position;
     }
 }

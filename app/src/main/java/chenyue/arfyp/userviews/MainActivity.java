@@ -34,6 +34,7 @@ import android.media.Image;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.util.Pair;
@@ -102,7 +103,7 @@ import static com.google.ar.core.TrackingState.TRACKING;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3d model of the Android robot.
  */
-public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
+public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer, Serializable {
     private static boolean READY_FOR_NEXT_FRAME = true;
     public static boolean NAVIGATION_MODE = false;
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -150,10 +151,10 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
     // navigation related
     private DistanceEstimation estimator;
-    private Thread estimatorThread;
+    public Thread estimatorThread;
     private CoordsCalculation coordsTracker;
-    private Thread coordsTrackerThread;
-    private Thread drawMapThread;
+    public Thread coordsTrackerThread;
+    public Thread drawMapThread;
     private SensorManager sensorManager;
     private Sensor gSensor;
     private Sensor aSensor;
@@ -207,7 +208,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         trackingView = findViewById(R.id.tracking_view);
 
-
         // set up navigation related stuff
 
         //sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_GAME);
@@ -225,12 +225,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 estimatorThread = new Thread(estimator);
                 coordsTrackerThread = new Thread(coordsTracker);
                 drawMapThread = new Thread(mapView);
-                intent.putExtra("estimator_thread", (Serializable) estimatorThread);
-                intent.putExtra("coords_tracker_thread", (Serializable) coordsTrackerThread);
-                intent.putExtra("draw_map_thread", (Serializable) drawMapThread);
-                intent.putExtra("quit_navigation_button", (Serializable) quit_navigation);
-                intent.putExtra("search_button", (Serializable) search_button);
-                startActivity(intent);
+                startActivityForResult(intent, 333);
             }
         });
         quit_navigation.setOnClickListener(new View.OnClickListener() {
@@ -320,6 +315,9 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         estimator.setRequireEstimation(true);
         glView.onResume();
         displayRotationHelper.onResume();
+        if (coordsTrackerThread != null && coordsTrackerThread.isAlive()) {
+
+        }
 
     }
 
@@ -695,6 +693,19 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         quit_navigation.setVisibility(View.INVISIBLE);
         map_button.setVisibility(View.INVISIBLE);
         search_button.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == SearchActivity.START_FOR_NAVIGATION) {
+            if (coordsTrackerThread != null) coordsTrackerThread.start();
+            if (estimatorThread != null) estimatorThread.start();
+            if (drawMapThread != null) drawMapThread.start();
+            quit_navigation.setVisibility(View.VISIBLE);
+            search_button.setVisibility(View.INVISIBLE);
+            // map button visibility is controlled by estimator
+        }
     }
 
 }

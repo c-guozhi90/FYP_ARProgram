@@ -31,12 +31,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <chenyue.arfyp.userviews.MapOverlay
-        android:id="@+id/map_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clickable="true"
-        android:visibility="invisible" />
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/control_layout"
@@ -48,6 +42,8 @@
             android:id="@+id/search_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="15dp"
+            android:layout_marginBottom="15dp"
             android:background="#30aaaaaa"
             android:text="search"
             android:textColor="@android:color/white"
@@ -58,16 +54,21 @@
             android:id="@+id/quit_navigation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="15dp"
+            android:layout_marginBottom="15dp"
             android:background="#30aaaaaa"
             android:text="quit navigation"
             android:textColor="@android:color/white"
             android:visibility="invisible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
+
         <Button
             android:id="@+id/map_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginRight="15dp"
+            android:layout_marginBottom="15dp"
             android:background="#30aaaaaa"
             android:text="floor plan"
             android:textColor="@android:color/white"
@@ -75,6 +76,13 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
     </android.support.constraint.ConstraintLayout>
+
+    <chenyue.arfyp.userviews.MapOverlay
+        android:id="@+id/map_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="true"
+        android:visibility="invisible" />
 
     <View
         android:id="@+id/debug_view"

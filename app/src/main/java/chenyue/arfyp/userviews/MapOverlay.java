@@ -1,5 +1,6 @@
 package chenyue.arfyp.userviews;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -104,8 +105,6 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
             InputStream floorPlanInput = assets.open("floorplan/" + CoordsCalculation.floor + ".png");
             final Bitmap floorplan = Bitmap.createBitmap(BitmapFactory.decodeStream(floorPlanInput));
             while (requireDraw) {
-                if (getVisibility() == SurfaceView.INVISIBLE)
-                    setVisibility(SurfaceView.VISIBLE);
                 coordsFromWorldToMap(floorplan);
                 refreshView(floorplan);
                 try {

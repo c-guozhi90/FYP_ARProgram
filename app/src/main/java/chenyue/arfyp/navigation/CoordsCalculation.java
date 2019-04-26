@@ -1,6 +1,8 @@
 package chenyue.arfyp.navigation;
 
 
+import android.util.Log;
+
 import com.google.ar.core.Camera;
 import com.google.ar.core.Pose;
 import com.google.ar.core.TrackingState;
@@ -10,6 +12,7 @@ import com.google.ar.core.TrackingState;
  * this class includes coordinates tracking functions
  */
 public class CoordsCalculation implements Runnable {
+    public final static String TAG = "coordsCalculation";
     public static double[] curPosition = new double[2];
     public static double DEGREE_OFFSET;
     public static double[] initCoordinates = new double[2];     // first for East, second for North
@@ -60,6 +63,7 @@ public class CoordsCalculation implements Runnable {
     }
 
     public void run() {
+        Log.d(TAG, "coords calculation started");
         while (true) {
             if (!readyForTracking) {
                 try {

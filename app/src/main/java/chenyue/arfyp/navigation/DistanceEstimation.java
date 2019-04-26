@@ -7,6 +7,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.nfc.Tag;
+import android.util.Log;
 import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
@@ -16,6 +18,12 @@ import com.chenyue.tensorflowdetection.MultiBoxTracker;
 import com.google.ar.core.Camera;
 import com.google.ar.core.CameraIntrinsics;
 
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -26,16 +34,17 @@ import chenyue.arfyp.userviews.MainActivity;
 import chenyue.arfyp.userviews.R;
 
 public class DistanceEstimation implements SensorEventListener, Runnable {
+    public final static String TAG = "estimation";
     public static float[] EulerDegrees = new float[3];
     private MultiBoxTracker tracker;
     private HashMap<String, DetailedObject> detailedObjectList;
     private Camera camera = null;
-    private float[] magneticFieldValues;
-    private float[] accelerometerValues;
+    private float[] magneticFieldValues = new float[3];
+    private float[] accelerometerValues = new float[3];
     private double orientationAngle;
     private boolean requireEstimation = true;
     private Context context;
-    private Activity activity;
+    private Activity mainActivity;
 
     // not essential
     public void updateCameraParams(Camera camera) {
@@ -58,8 +67,10 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         if (detailedObjectList == null)
             detailedObjectList = new HashMap<>(100);
         this.context = context;
-        this.activity = activity;
+        this.mainActivity = activity;
     }
+
+    static int times = 0;
 
     // in this function, we use the default size of ARCore Image(640*480) to estimate the distance
     public double estimateDistance(DetailedObject object) {
@@ -88,12 +99,33 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         double angle_JKB = Math.abs(adjustAngle(objectFacing + 0.5 * Math.PI) - orientationAngle);
         double angle_kBJ = Math.abs(adjustAngle(DistanceEstimation.EulerDegrees[0] + 0.5 * Math.PI) - adjustAngle(objectFacing + 0.5 * Math.PI));
         double JK = BJ * Math.sin(angle_kBJ) / Math.sin(angle_JKB);
+        /*log in file start*/
+        try {
+            String logPath = context.getCacheDir().getAbsolutePath() + "/log.txt";
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
+            bw.write("times " + times++);
+            bw.write("focal length " + focalLength[1] + "\n");
+            bw.write("location height " + location.height() + "\n");
+            bw.write("orientation angle " + Math.toDegrees(orientationAngle) + "\n");
+            bw.write("angle_oag " + Math.toDegrees(angle_oag) + "\n");
+            bw.write("angle_JKB " + Math.toDegrees(angle_JKB) + "\n");
+            bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
+            bw.write("nearest OG " + nearestOG + "\n");
+            bw.write("nearest OD " + nearestOD + "\n");
+            bw.write("distance " + (calibratedOD + JK) + "\n");
+            bw.flush();
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        /*log in file end*/
         return calibratedOD + JK;
     }
 
     public void run() {
         // Because the network inquiry is time consuming, it must start a new sub-thread for every detected object.
         // But here, a new sub-thread will be started automatically within the constructor of informationManager.
+        Log.d(TAG, "estimation started");
         List<Pair<RectF, String>> qualifiedTrackedObjects;
         while (requireEstimation) {  // here, may set a boolean variable
             // 1. get qualified detected object(not near the edge) from tracker in sync manner
@@ -189,9 +221,10 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             if (!CoordsCalculation.readyForTracking && objectNum > 0) {
                 CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera);
                 Toast.makeText(context, "your position information is available", Toast.LENGTH_SHORT).show();
-                Button mapButton = activity.findViewById(R.id.map_button);
+                Button mapButton = mainActivity.findViewById(R.id.map_button);
                 mapButton.setVisibility(View.VISIBLE);
                 requireEstimation = false;
+                Log.d(TAG, "estimation end");
             }
         }
     }
