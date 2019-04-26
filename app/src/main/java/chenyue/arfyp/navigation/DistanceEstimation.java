@@ -46,7 +46,10 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     private boolean requireEstimation = true;
     private Context context;
     private Activity mainActivity;
+<<<<<<< HEAD
     private Handler handler;
+=======
+>>>>>>> fix bugs
 
     // not essential
     public void updateCameraParams(Camera camera) {
@@ -227,11 +230,16 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             if (!CoordsCalculation.readyForTracking && objectNum > 0) {
                 CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera,orientationAngle);
                 Toast.makeText(context, "your position information is available", Toast.LENGTH_SHORT).show();
+<<<<<<< HEAD
                 handler.post(() -> {
                             Button mapButton = mainActivity.findViewById(R.id.map_button);
                             mapButton.setVisibility(View.VISIBLE);
                         }
                 );
+=======
+                Button mapButton = mainActivity.findViewById(R.id.map_button);
+                mapButton.setVisibility(View.VISIBLE);
+>>>>>>> fix bugs
                 requireEstimation = false;
                 Log.d(TAG, "estimation end");
             }

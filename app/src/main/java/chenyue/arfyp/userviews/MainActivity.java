@@ -225,7 +225,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 estimatorThread = new Thread(estimator);
                 coordsTrackerThread = new Thread(coordsTracker);
                 drawMapThread = new Thread(mapView);
+<<<<<<< HEAD
                 startActivityForResult(intent, 333);
+=======
+                startActivity(intent);
+>>>>>>> fix bugs
             }
         });
         quit_navigation.setOnClickListener(new View.OnClickListener() {
@@ -706,7 +710,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+<<<<<<< HEAD
         if (resultCode == SearchActivity.START_FOR_NAVIGATION) {
+=======
+        if (requestCode == SearchActivity.START_FOR_NAVIGATION) {
+>>>>>>> fix bugs
             if (coordsTrackerThread != null) coordsTrackerThread.start();
             if (estimatorThread != null) estimatorThread.start();
             if (drawMapThread != null) drawMapThread.start();

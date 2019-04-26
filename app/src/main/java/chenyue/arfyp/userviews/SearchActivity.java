@@ -37,7 +37,10 @@ import java.util.function.Consumer;
 import chenyue.arfyp.navigation.CoordsCalculation;
 
 public class SearchActivity extends Activity implements View.OnClickListener, AdapterView.OnItemClickListener {
+<<<<<<< HEAD
     private final static String TAG = "Search Activity";
+=======
+>>>>>>> fix bugs
     private ListView searchListView;
     private EditText searchInput;
     private Button searchButton;
@@ -45,9 +48,13 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
     private Button goThereButton;
     private ArrayAdapter<String> searchResultsItems;
     private boolean EnquiryFinished = false;
+<<<<<<< HEAD
     private Handler handler;
     public static int START_FOR_NAVIGATION = 1;
     private int selected = 0;
+=======
+    public static int START_FOR_NAVIGATION = 1;
+>>>>>>> fix bugs
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,7 +92,11 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
                 this.finish();
                 break;
             case R.id.go_there_button:
+<<<<<<< HEAD
                 startNavigation(selected);
+=======
+                startNavigation(searchListView.getSelectedItemPosition());
+>>>>>>> fix bugs
                 setResult(START_FOR_NAVIGATION);
                 finish();
                 break;
@@ -223,6 +234,9 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         goThereButton.setVisibility(View.VISIBLE);
+<<<<<<< HEAD
         selected = position;
+=======
+>>>>>>> fix bugs
     }
 }
