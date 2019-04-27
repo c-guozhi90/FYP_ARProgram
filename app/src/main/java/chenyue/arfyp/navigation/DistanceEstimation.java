@@ -81,7 +81,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
 
         RectF location = object.location;
         CameraIntrinsics intrinsics = camera.getImageIntrinsics();
-        int frameSize[] = intrinsics.getImageDimensions(); // width, height order
+        //int frameSize[] = intrinsics.getImageDimensions(); // width, height order
         float O[] = intrinsics.getPrincipalPoint();
 
         // fx is approximately equal to fy. fy is bigger.
@@ -95,7 +95,8 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         // calculate the OD in convenient way(lose accuracy). if the camera dose not facing the object, the error will increase.
         double calibratedOD = nearestOD / Math.sin(Math.atan(focalLength[0] / Math.abs(location.centerX() - O[0])));
         double BJ = nearestOD * 0.5 * location.width() / focalLength[0];
-        orientationAngle = adjustAngle(DistanceEstimation.EulerDegrees[0] + Math.atan2(location.centerX() - O[0], focalLength[0]));
+        //orientationAngle = adjustAngle(DistanceEstimation.EulerDegrees[0] + Math.atan2(location.centerX() - O[0], focalLength[0]));
+        orientationAngle = adjustAngle(objectFacing - Math.PI);
         double angle_JKB = Math.abs(adjustAngle(objectFacing + 0.5 * Math.PI) - orientationAngle);
         double angle_kBJ = Math.abs(adjustAngle(DistanceEstimation.EulerDegrees[0] + 0.5 * Math.PI) - adjustAngle(objectFacing + 0.5 * Math.PI));
         double JK = BJ * Math.sin(angle_kBJ) / Math.sin(angle_JKB);
@@ -112,6 +113,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
             bw.write("nearest OG " + nearestOG + "\n");
             bw.write("nearest OD " + nearestOD + "\n");
+            bw.write("calibrated OD " + nearestOD + "\n");
             bw.write("distance " + (calibratedOD + JK) + "\n");
             bw.flush();
             bw.close();
@@ -119,7 +121,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             e.printStackTrace();
         }
         /*log in file end*/
-        return calibratedOD + JK;
+        return calibratedOD;
     }
 
     public void run() {
