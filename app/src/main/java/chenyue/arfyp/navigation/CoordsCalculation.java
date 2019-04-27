@@ -22,14 +22,18 @@ public class CoordsCalculation implements Runnable {
     private static Camera camera;
 
 
-    public static void prepareTracking(double E, double N, Camera ARcamera) {
-        CoordsCalculation.setRotationOffset(DistanceEstimation.EulerDegrees[0]);
+    public static void prepareTracking(double E, double N, Camera ARcamera, double orientationInBuildingSys) {
+
         CoordsCalculation.initCoordinates[0] = E;
         CoordsCalculation.initCoordinates[1] = N;
         camera = ARcamera;
-        Pose initCameraPose = ARcamera.getDisplayOrientedPose();
-        CoordsCalculation.initCameraCoords[0] = initCameraPose.tx();
-        CoordsCalculation.initCameraCoords[1] = initCameraPose.tz();
+        Pose initVirtualCameraPose=camera.getDisplayOrientedPose();
+        Pose initPhysicalCameraPose = ARcamera.getPose();
+        float[] initRotaionQuaternion = initPhysicalCameraPose.getRotationQuaternion();
+        double[] initEulerAngles = toEulerAngle(initRotaionQuaternion);
+        CoordsCalculation.setRotationOffset((float) initEulerAngles[0], (float) orientationInBuildingSys);
+        CoordsCalculation.initCameraCoords[0] = initVirtualCameraPose.tx();
+        CoordsCalculation.initCameraCoords[1] = initVirtualCameraPose.tz();
         CoordsCalculation.readyForTracking = true;
     }
 
@@ -53,8 +57,8 @@ public class CoordsCalculation implements Runnable {
         initCameraCoords[1] = curPose.tz();
     }
 
-    public static void setRotationOffset(float eulerDegree) {
-        DEGREE_OFFSET = DistanceEstimation.adjustAngle(eulerDegree + 0.5 * Math.PI);
+    public static void setRotationOffset(float eulerDegree, float orientationInBuilding) {
+        DEGREE_OFFSET = DistanceEstimation.adjustAngle(orientationInBuilding + DistanceEstimation.adjustAngle(0.5 * Math.PI - eulerDegree));
     }
 
     public static void saveTempCoords(double tempCoords[]) {
@@ -83,5 +87,31 @@ public class CoordsCalculation implements Runnable {
                 }
             }
         }
+    }
+
+    public static double[] toEulerAngle(float q[]) {
+        // roll (x-axis rotation)  ***use camera physical pose, the x axis is pointing up,y axis is pointing left
+        double sinr_cosp = +2.0 * (q[3] * q[0] + q[1] * q[2]);
+        double cosr_cosp = +1.0 - 2.0 * (q[0] * q[0] + q[1] * q[1]);
+        double roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+        // pitch (y-axis rotation)
+        double sinp = +2.0 * (q[3] * q[1] - q[2] * q[0]);
+        double pitch;
+        if (Math.abs(sinp) >= 1) {
+            if (sinp < 0)// use 90 degrees if out of range
+                pitch = -Math.PI / 2;
+            else
+                pitch = Math.PI / 2;
+        } else
+            pitch = Math.asin(sinp);
+
+        // yaw (z-axis rotation)
+        double yaw;
+        double siny_cosp = +2.0 * (q[3] * q[2] + q[0] * q[1]);
+        double cosy_cosp = +1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2]);
+        yaw = Math.atan2(siny_cosp, cosy_cosp);
+        double[] results = {roll, pitch, yaw};
+        return results;
     }
 }

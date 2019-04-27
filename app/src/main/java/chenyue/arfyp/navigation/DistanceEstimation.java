@@ -8,6 +8,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.nfc.Tag;
+import android.os.Handler;
 import android.util.Log;
 import android.util.Pair;
 import android.view.View;
@@ -45,6 +46,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     private boolean requireEstimation = true;
     private Context context;
     private Activity mainActivity;
+    private Handler handler;
 
     // not essential
     public void updateCameraParams(Camera camera) {
@@ -175,6 +177,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                                 else
                                     break;
                             } catch (InterruptedException e) {
+
                                 e.printStackTrace();
                             }
                         }
@@ -210,8 +213,9 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                 //objectCoords = (double[])detailedObject.informationSet.getFacilityDetails().get("coordinates"));
                 objectCoords[0] = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("coordsE"));
                 objectCoords[1] = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("coordsN"));
-                sumCoords[0] = sumCoords[0] + objectCoords[0] + detailedObject.averageDistance * Math.sin(adjustAngle(Math.PI - orientationAngle));
-                sumCoords[1] = sumCoords[1] + objectCoords[1] + detailedObject.averageDistance * Math.cos(adjustAngle(Math.PI - orientationAngle));
+                double objectFacing = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("facing"));
+                sumCoords[0] = sumCoords[0] + objectCoords[0] + detailedObject.averageDistance * Math.sin(objectFacing);
+                sumCoords[1] = sumCoords[1] + objectCoords[1] + detailedObject.averageDistance * Math.cos(objectFacing);
                 objectNum++;
                 CoordsCalculation.floor = Integer.parseInt(detailedObject.informationSet.getFacilityDetails().get("floor"));
 
@@ -221,15 +225,19 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             // Rotation about the y axis. that is because the initial coordinates system in ARCore for camera is special.
             // Its Y axis is pointing up, X axis is pointing to right, and Z axis is pointing to forward
             if (!CoordsCalculation.readyForTracking && objectNum > 0) {
-                CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera);
+                CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera,orientationAngle);
                 Toast.makeText(context, "your position information is available", Toast.LENGTH_SHORT).show();
-                Button mapButton = mainActivity.findViewById(R.id.map_button);
-                mapButton.setVisibility(View.VISIBLE);
+                handler.post(() -> {
+                            Button mapButton = mainActivity.findViewById(R.id.map_button);
+                            mapButton.setVisibility(View.VISIBLE);
+                        }
+                );
                 requireEstimation = false;
                 Log.d(TAG, "estimation end");
             }
         }
     }
+
 
     @Override
     public void onSensorChanged(SensorEvent event) {
