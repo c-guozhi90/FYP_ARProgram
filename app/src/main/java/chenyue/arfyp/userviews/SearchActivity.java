@@ -92,11 +92,7 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
                 this.finish();
                 break;
             case R.id.go_there_button:
-<<<<<<< HEAD
                 startNavigation(selected);
-=======
-                startNavigation(searchListView.getSelectedItemPosition());
->>>>>>> fix bugs
                 setResult(START_FOR_NAVIGATION);
                 finish();
                 break;
