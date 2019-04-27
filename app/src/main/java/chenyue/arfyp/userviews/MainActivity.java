@@ -138,8 +138,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private Map<Integer, Pair<AugmentedImage, InformationManager>> augmentedImageMap = new HashMap<>();
 
     // Tensorflow related
-    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/frozen_inference_graph.pb";
-    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/fyp_labels_list.txt";
+    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/ssd_mobilenet_v1_android_export.pb";
+    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/coco_labels_list.txt";
     private Classifier detector;
     private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
     private static final int TF_INPUT_SIZE = 300;
@@ -514,7 +514,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         }
     }
 
-    static int count = 10;
+    static int count = 9;
 
     // we have to define tensorflowThread in MainAcitivity because some variables like tracker can only be accessed within this class.
     private Runnable tensorflowThread(Image image) {
@@ -525,10 +525,16 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 if (cameraCharacteristics == null) return;
                 int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) - TensorflowUtils.getScreenOrientation(mainActivity);
                 Logger logger = new Logger(TAG);
-                Size size = new Size(image.getWidth(), image.getHeight());
+                int cropedHeight = 480, cropedWidth = 640, startPoint = 0;
+                if (sensorOrientation == 90) {
+                    cropedHeight = (int) (1080f / 2138f * 640f);
+                    startPoint = (480 - cropedHeight) / 2;
+                }
+
+                Size size = new Size(cropedWidth, cropedHeight);
 
                 int[] rgbBytes = new int[image.getWidth() * image.getHeight()];
-                TensorflowUtils.convert(image.getPlanes(), size, rgbBytes);
+                TensorflowUtils.convert(image.getPlanes(), new Size(image.getWidth(), image.getHeight()), rgbBytes);
 
                 frameToCropTransform = TensorflowUtils.getTransformationMatrix(
                         size.getWidth(), size.getHeight(), TF_INPUT_SIZE, TF_INPUT_SIZE, sensorOrientation, false);
@@ -537,12 +543,13 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
                 // the bug can be fixed if the width is changed to 360, use another createbitmap method to do this
                 Bitmap originBitmap = Bitmap.createBitmap(
-                        rgbBytes, size.getWidth(), size.getHeight(), Bitmap.Config.ARGB_8888);
+                        rgbBytes, image.getWidth(), image.getHeight(), Bitmap.Config.ARGB_8888);
+                Bitmap croppedOrigin = Bitmap.createBitmap(originBitmap, 0, startPoint, size.getWidth(), size.getHeight());
                 if (count < 10)
-                    TensorflowUtils.saveBitmap(context, originBitmap, "originPreview.png");
+                    TensorflowUtils.saveBitmap(context, croppedOrigin, "originPreview.png");
 
                 Bitmap croppedFrame = Bitmap.createBitmap(
-                        originBitmap, 0, 0, originBitmap.getWidth(), originBitmap.getHeight(), frameToCropTransform, false);
+                        croppedOrigin, 0, 0, croppedOrigin.getWidth(), croppedOrigin.getHeight(), frameToCropTransform, false);
 
                 Canvas canvas = new Canvas(croppedFrame);
                 Paint paint = new Paint();
@@ -569,8 +576,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                     TensorflowUtils.saveBitmap(context, croppedFrame, "afterDraw.png");
 
                 //add detected objects into result set, set proper parameters for tracker
-                tracker.setFrameWidth(image.getWidth());
-                tracker.setFrameHeight(image.getHeight());
+                tracker.setFrameWidth(cropedWidth);
+                tracker.setFrameHeight(cropedHeight);
                 tracker.setSensorOrientation(sensorOrientation);
                 tracker.trackResults(mappedRecognitions);   // we can notify the distance estimator after updating the trackedResults
                 logger.d("size of collection %d", mappedRecognitions.size());
@@ -578,6 +585,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 trackingView.refreshView();
                 originBitmap.recycle();
                 croppedFrame.recycle();
+                croppedOrigin.recycle();
                 image.close();
                 READY_FOR_NEXT_FRAME = true;
                 count++;

@@ -24,8 +24,10 @@ import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
 
@@ -107,12 +109,11 @@ public class MultiBoxTracker {
 
     public synchronized void draw(final Canvas canvas) {
         // clear the previous marks
-        canvas.drawColor(0, PorterDuff.Mode.CLEAR);
         final boolean rotated = sensorOrientation % 180 == 90;
         //logger.i("multiplier: %f", multiplier);
         screenWidth = rotated ? canvas.getWidth() : canvas.getHeight();
         screenHeight = rotated ? canvas.getHeight() : canvas.getWidth();
-        //logger.i("width: %d, height: %d", screenWidth, screenHeight);
+        logger.i("width: %d, height: %d", screenWidth, screenHeight);
 
         frameToCanvasMatrix =
                 TensorflowUtils.getTransformationMatrix(
@@ -122,6 +123,14 @@ public class MultiBoxTracker {
                         screenHeight,
                         sensorOrientation,
                         false);
+        logger.d("size of tracked objects %d", trackedObjects.size());
+        if (trackedObjects.size() == 0) {
+            logger.d("clear the stuff");
+
+            Paint paint = new Paint();
+            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            canvas.drawPaint(paint);
+        }
         for (final TrackedRecognition recognition : trackedObjects) {
             final RectF trackedPos = new RectF(recognition.location);
             //logger.i("tracked rect position before transform %f %f", trackedPos.left, trackedPos.top);
@@ -168,10 +177,10 @@ public class MultiBoxTracker {
             rectsToTrack.add(new Pair<Float, Recognition>(result.getConfidence(), result));  // here rectsToTrack records those rect bigger than min_size
         }
 
-        if (rectsToTrack.isEmpty()) {
-            logger.v("Nothing to track, aborting.");
-            return;
-        }
+//        if (rectsToTrack.isEmpty()) {
+//            logger.v("Nothing to track, aborting.");
+//            return;
+//        }
 
         synchronized (trackedObjects) {
             trackedObjects.clear();
