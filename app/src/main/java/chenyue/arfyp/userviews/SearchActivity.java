@@ -111,37 +111,46 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
                 br.close();
                 isr.close();
                 connection.disconnect();
-                JSONArray returnedJSONArray = new JSONArray(result);
-                for (int idx = 0; idx < returnedJSONArray.length(); idx++) {
-                    JSONObject details = returnedJSONArray.getJSONObject(idx);
-                    Iterator<String> keys = details.keys();
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
+
+                String finalResult = result;
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        JSONArray returnedJSONArray = null;
+                        try {
+                            returnedJSONArray = new JSONArray(finalResult);
                             synchronized (searchResultsItems) {
                                 searchResultsItems.clear();
-                                keys.forEachRemaining(new Consumer<String>() {
-                                    @Override
-                                    public void accept(String key) {
-                                        try {
-                                            if (key.equals("facility_name")) {
-                                                Log.d(TAG, "here");
-                                                String property = details.getString(key);
-                                                searchResultsItems.add(property);
+                                for (int idx = 0; idx < returnedJSONArray.length(); idx++) {
+                                    JSONObject details = returnedJSONArray.getJSONObject(idx);
+                                    Iterator<String> keys = details.keys();
+                                    keys.forEachRemaining(new Consumer<String>() {
+                                        @Override
+                                        public void accept(String key) {
+                                            try {
+                                                if (key.equals("facility_name")) {
+                                                    Log.d(TAG, "here");
+                                                    String property = details.getString(key);
+                                                    Log.d(TAG, property);
+                                                    searchResultsItems.add(property);
+                                                }
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
                                             }
-                                        } catch (JSONException e) {
-                                            e.printStackTrace();
                                         }
-                                    }
-                                });
-                                searchResultsItems.notifyDataSetChanged();
+                                    });
+                                }
                                 EnquiryFinished = true;
                             }
+                            Log.d(TAG, "" + searchResultsItems.getCount());
+                            searchResultsItems.notifyDataSetChanged();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
-                    });
-                }
 
-            } catch (IOException | JSONException e) {
+                    }
+                });
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }).start();
@@ -181,7 +190,10 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
 
     private void searchNavigationPath(double[] startPoint, int floor, String target) {
         try {
-            Socket newEnquiry = new Socket("localhost", 80);    // set up a website
+//            while (!CoordsCalculation.readyForTracking) {
+//                Thread.sleep(50);
+//            }
+            Socket newEnquiry = new Socket("139.199.88.99", 3001);    // set up a website
             DataOutputStream dos = new DataOutputStream(newEnquiry.getOutputStream());
             DataInputStream dis = new DataInputStream(newEnquiry.getInputStream());
             dos.writeInt(0); // operation code
@@ -190,11 +202,12 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
             dos.writeInt(floor);
             dos.writeUTF(target);
             String results = dis.readUTF();
+            dis.close();
+            dos.close();
             JSONArray jsonArray = new JSONArray(results);
             JSONObject jsonObject = jsonArray.getJSONObject(0);
             double[] coordinates = (double[]) jsonObject.get("coordinates");  // may cause a bug
-            dis.close();
-            dos.close();
+
         } catch (IOException | JSONException e) {
             e.printStackTrace();
         }

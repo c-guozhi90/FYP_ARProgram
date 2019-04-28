@@ -27,7 +27,7 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
     private final Paint paint = new Paint();
     private Canvas canvas;
     public static boolean requireDraw = true;
-    private static double PLAN_DEGREE_OFFEST = Math.toRadians(-51); // always positive
+    private static double PLAN_DEGREE_OFFEST = 0;//Math.toRadians(-51); // always positive
     private static double METER_PER_PIXEL = 3.6 / 80;
     private double[] coordsInPlan;
 
@@ -40,6 +40,7 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
         paint.setStyle(Paint.Style.FILL);
         paint.setStrokeWidth(3.0f);
         coordsInPlan = new double[2];
+        setZOrderOnTop(true);
     }
 
     @Override
@@ -76,8 +77,8 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
         double x, y;
         double distance = calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]) / METER_PER_PIXEL;
         double degree = Math.atan2(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]);
-        x = distance * Math.sin(degree - PLAN_DEGREE_OFFEST) + floorplan.getWidth() / 2;
-        y = floorplan.getHeight() / 2 - distance * Math.cos(degree - PLAN_DEGREE_OFFEST);
+        x = distance * Math.sin(degree - PLAN_DEGREE_OFFEST) + (double) floorplan.getWidth() / 2;
+        y = (double) floorplan.getHeight() / 2 - distance * Math.cos(degree - PLAN_DEGREE_OFFEST);
         if (x < 0) coordsInPlan[0] = 0;
         else if (x > floorplan.getWidth()) coordsInPlan[0] = floorplan.getWidth();
         else coordsInPlan[0] = x;

@@ -70,6 +70,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             detailedObjectList = new HashMap<>(100);
         this.context = context;
         this.mainActivity = activity;
+        handler = new Handler();
     }
 
     static int times = 0;
@@ -79,7 +80,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         double realHeight, objectFacing;
         //double objectFacing;
         realHeight = Double.parseDouble(object.informationSet.getFacilityDetails().get("realHeight"));
-        objectFacing = Math.toRadians(Double.parseDouble((object.informationSet.getFacilityDetails().get("objectFacing"))));
+        objectFacing = Math.toRadians(Double.parseDouble((object.informationSet.getFacilityDetails().get("facing"))));
 
         RectF location = object.location;
         CameraIntrinsics intrinsics = camera.getImageIntrinsics();
@@ -104,9 +105,12 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         double JK = BJ * Math.sin(angle_kBJ) / Math.sin(angle_JKB);
         /*log in file start*/
         try {
-            String logPath = context.getCacheDir().getAbsolutePath() + "/log.txt";
+            String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log.txt";
+            Log.d(TAG, "file here: " + logPath);
             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
-            bw.write("times " + times++);
+            bw.write("times " + ++times + "\n");
+            bw.write("theta: " + Math.toDegrees(EulerDegrees[1] + 0.5 * Math.PI));
+            bw.write("sin theta: " + Math.sin(EulerDegrees[1] + 0.5 * Math.PI));
             bw.write("focal length " + focalLength[1] + "\n");
             bw.write("location height " + location.height() + "\n");
             bw.write("orientation angle " + Math.toDegrees(orientationAngle) + "\n");
@@ -115,7 +119,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
             bw.write("nearest OG " + nearestOG + "\n");
             bw.write("nearest OD " + nearestOD + "\n");
-            bw.write("calibrated OD " + nearestOD + "\n");
+            bw.write("calibrated OD " + calibratedOD + "\n");
             bw.write("distance " + (calibratedOD + JK) + "\n");
             bw.flush();
             bw.close();
@@ -144,6 +148,8 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                         }
                 } while (qualifiedTrackedObjects == null || qualifiedTrackedObjects.size() == 0);
             }
+            Log.d(TAG, "start enquiry");
+
             int inquiryCount = 0;
             // 2. for every new detected object, start an information inquiry, and add into a hashMap.
             // if such object already exists in hashMap, update the its location if any.
@@ -166,6 +172,8 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             }
             // 3. wait until all information are retrieved. decrease inquiryCount by one when one thread is finished.
             // remove useless objects if any.
+            Log.d(TAG, "wait for enquiry");
+
             while (inquiryCount > 0) {
                 for (String key : detailedObjectList.keySet()) {
                     do {
@@ -187,6 +195,8 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                 }
             }
             // 4. start estimating distance. estimate five times and then calculate its average value
+            Log.d(TAG, "estimate distance");
+
             for (String key : detailedObjectList.keySet()) {
                 DetailedObject detailedObject = detailedObjectList.get(key);
                 if (detailedObject == null) continue;
@@ -225,15 +235,20 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             // Rotation about the y axis. that is because the initial coordinates system in ARCore for camera is special.
             // Its Y axis is pointing up, X axis is pointing to right, and Z axis is pointing to forward
             if (!CoordsCalculation.readyForTracking && objectNum > 0) {
-                CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera,orientationAngle);
-                Toast.makeText(context, "your position information is available", Toast.LENGTH_SHORT).show();
+                CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera, orientationAngle);
                 handler.post(() -> {
+                            Toast.makeText(context, "your position information is available", Toast.LENGTH_SHORT).show();
                             Button mapButton = mainActivity.findViewById(R.id.map_button);
                             mapButton.setVisibility(View.VISIBLE);
                         }
                 );
                 requireEstimation = false;
                 Log.d(TAG, "estimation end");
+            }
+            try {
+                Thread.sleep(50); // cannot calculate too fast
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -249,9 +264,10 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     }
 
     private void calculateRotation() {
-        float RMtx[] = new float[9];
+        float[] RMtx = new float[9];
         SensorManager.getRotationMatrix(RMtx, null, accelerometerValues, magneticFieldValues);
-        SensorManager.getOrientation(RMtx, DistanceEstimation.EulerDegrees);
+        SensorManager.getOrientation(RMtx, EulerDegrees);
+        Log.d(TAG, "degree " + EulerDegrees[1]);
     }
 
     @Override

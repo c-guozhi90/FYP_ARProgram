@@ -1,5 +1,7 @@
 package chenyue.arfyp.common.informationUtil;
 
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -47,9 +49,9 @@ public class InformationManager {
                     public void accept(String key) {
                         try {
                             if (key.equals("coordinates")) {
-                                double coordinates[] = (double[]) details.get(key);
-                                facilityDetails.put("coordsE", String.valueOf(coordinates[0]));
-                                facilityDetails.put("coordsN", String.valueOf(coordinates[1]));
+                                JSONArray tempArray=(JSONArray)details.get(key);
+                                facilityDetails.put("coordsE", tempArray.get(0).toString());
+                                facilityDetails.put("coordsN", tempArray.get(1).toString());
                             } else {
                                 String property = String.valueOf(details.get(key));
                                 facilityDetails.put(key, property);

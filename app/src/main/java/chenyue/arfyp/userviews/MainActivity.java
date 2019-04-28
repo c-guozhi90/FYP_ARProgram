@@ -138,8 +138,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private Map<Integer, Pair<AugmentedImage, InformationManager>> augmentedImageMap = new HashMap<>();
 
     // Tensorflow related
-    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/ssd_mobilenet_v1_android_export.pb";
-    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/coco_labels_list.txt";
+    private static final String MODEL_PATH = "file:///android_asset/tensorflow_models/frozen_inference_graph.pb";
+    private static final String LABELS_PATH = "file:///android_asset/tensorflow_models/fyp_labels_list.txt";
     private Classifier detector;
     private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
     private static final int TF_INPUT_SIZE = 300;
@@ -204,8 +204,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         estimator = new DistanceEstimation(this, this, tracker);
         coordsTracker = new CoordsCalculation();
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        gSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        gSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         trackingView = findViewById(R.id.tracking_view);
 
         // set up navigation related stuff
