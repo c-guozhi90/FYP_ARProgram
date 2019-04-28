@@ -38,18 +38,18 @@ public class ArrowRenderer {
     private int program;
     private final int[] textureId = new int[1];
     private final float[] VOA = {
-            // x    y       u   v
-            -0.5f, -0.3f, 0.0f, 0.0f,   // bottom-left
-            -0.5f, -0.1f, 0.0f, 1.0f,   // top-left
-            0.5f, -0.1f, 1.0f, 1.0f,    // top-right
-            0.5f, -0.1f, 1.0f, 1.0f,    // top-right
-            -0.5f, -0.1f, 0.0f, 1.0f,   // top-left
-            0.5f, -0.3f, 1.0f, 0.0f};   // bottom-right
+            // x    y       u   v       // u v will start from top-left
+            -0.2f, -0.4f, 0.0f, 1.0f,   // bottom-left
+            -0.2f, -0.1f, 0.0f, 0.0f,   // top-left
+            0.2f, -0.1f, 1.0f, 0.0f,    // top-right
+            0.2f, -0.1f, 1.0f, 0.0f,    // top-right
+            -0.2f, -0.4f, 0.0f, 1.0f,   // bottom-left
+            0.2f, -0.4f, 1.0f, 1.0f};   // bottom-right
 
     public ArrowRenderer() {
     }
 
-    public void createOnTread(Context context) throws IOException {
+    public void createOnGLThread(Context context) throws IOException {
         // load shaders
         final int vertextShader = ShaderUtil.loadGLShader(TAG, context, GLES20.GL_VERTEX_SHADER, VERTEX_SHADER_NAME);
         final int fragmentShader = ShaderUtil.loadGLShader(TAG, context, GLES20.GL_FRAGMENT_SHADER, FRAMENGT_SHADER_NAME);
@@ -98,7 +98,7 @@ public class ArrowRenderer {
         Matrix.rotateM(rotatedMatirx, 0, modelMatrix, 0, rotatedAngle, 0, 0, -1);
     }
 
-    public void draw(double rotationAngle) {
+    public void draw() {
 
         // clear color in buffer
 //        GLES20.glClearColor(1, 1, 1, 1);
@@ -112,21 +112,26 @@ public class ArrowRenderer {
         // set matrix into shader
         GLES20.glUniformMatrix4fv(modelUniform, 1, false, modelMatrix, 0);
 
+
         // set render mode
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         GLES20.glDepthMask(false);
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA); // set with another color
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         // begin draw
 
         FloatBuffer verticesBuffer = ByteBuffer.allocateDirect(VOA.length * BYTE_PER_FLOAT).order(ByteOrder.nativeOrder()).asFloatBuffer();
         verticesBuffer.put(VOA).position(0);
-        GLES20.glVertexAttribPointer(positionAttribute, VERTEX_COORD_NUM * BYTE_PER_FLOAT, GLES20.GL_FLOAT, false, 4 * BYTE_PER_FLOAT, verticesBuffer);
+        GLES20.glVertexAttribPointer(positionAttribute, VERTEX_COORD_NUM, GLES20.GL_FLOAT, false, 4 * BYTE_PER_FLOAT, verticesBuffer);
         verticesBuffer.position(VERTEX_COORD_NUM);
+
         GLES20.glEnableVertexAttribArray(positionAttribute);
-        GLES20.glVertexAttribPointer(texCoordAttribute, TEXTCOORD_NUM * BYTE_PER_FLOAT, GLES20.GL_FLOAT, false, 4 * BYTE_PER_FLOAT, verticesBuffer);
+        GLES20.glVertexAttribPointer(texCoordAttribute, TEXTCOORD_NUM, GLES20.GL_FLOAT, false, 4 * BYTE_PER_FLOAT, verticesBuffer);
         GLES20.glEnableVertexAttribArray(texCoordAttribute);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId[0]);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
 
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glDepthMask(true);
         GLES20.glDisable(GLES20.GL_BLEND);
         GLES20.glDisableVertexAttribArray(positionAttribute);
