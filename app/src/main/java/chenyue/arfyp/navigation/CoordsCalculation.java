@@ -90,7 +90,7 @@ public class CoordsCalculation implements Runnable {
     }
 
     public static double[] toEulerAngle(float q[]) {
-        // roll (x-axis rotation)  ***use camera physical pose, the x axis is pointing up,y axis is pointing left
+        // roll (x-axis rotation)  ***use camera physical pose, the x axis is pointing up,y axis is pointing left***
         double sinr_cosp = +2.0 * (q[3] * q[0] + q[1] * q[2]);
         double cosr_cosp = +1.0 - 2.0 * (q[0] * q[0] + q[1] * q[1]);
         double roll = Math.atan2(sinr_cosp, cosr_cosp);

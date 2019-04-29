@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 
 import chenyue.arfyp.navigation.CoordsCalculation;
+import chenyue.arfyp.navigation.Navigation;
 
 public class SearchActivity extends Activity implements View.OnClickListener, AdapterView.OnItemClickListener {
     private final static String TAG = "Search Activity";
@@ -190,9 +191,6 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
 
     private void searchNavigationPath(double[] startPoint, int floor, String target) {
         try {
-//            while (!CoordsCalculation.readyForTracking) {
-//                Thread.sleep(50);
-//            }
             Socket newEnquiry = new Socket("139.199.88.99", 3001);    // set up a website
             DataOutputStream dos = new DataOutputStream(newEnquiry.getOutputStream());
             DataInputStream dis = new DataInputStream(newEnquiry.getInputStream());
@@ -205,11 +203,12 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
             dis.close();
             dos.close();
             JSONArray jsonArray = new JSONArray(results);
-            JSONObject jsonObject = jsonArray.getJSONObject(0);
-            double[] coordinates = (double[]) jsonObject.get("coordinates");  // may cause a bug
+            Navigation.setPath(jsonArray);
+            Navigation.setStart(true);
 
         } catch (IOException | JSONException e) {
             e.printStackTrace();
+            Navigation.setStart(false);
         }
     }
 
@@ -219,7 +218,7 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
             String target = searchResultsItems.getItem(selectedTarget);
             while (true) {
                 if (CoordsCalculation.readyForTracking) {
-                    //searchNavigationPath(CoordsCalculation.initCoordinates, CoordsCalculation.floor, target);
+                    searchNavigationPath(CoordsCalculation.initCoordinates, CoordsCalculation.floor, target);
                     break;
                 } else {
                     try {

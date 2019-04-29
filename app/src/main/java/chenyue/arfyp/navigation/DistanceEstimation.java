@@ -48,6 +48,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     private Activity mainActivity;
     private Handler handler;
 
+
     // not essential
     public void updateCameraParams(Camera camera) {
         if (this.camera == null)
@@ -287,7 +288,12 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     public void setRequireEstimation(boolean operation) {
         requireEstimation = operation;
     }
+
+    public static double calculateDistance(double x1, double y1, double x2, double y2) {
+        return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+    }
+
+    public static double calculateDistance(double E, double N) {
+        return Math.sqrt(Math.pow(E, 2) + Math.pow(N, 2));
+    }
 }
-
-
-

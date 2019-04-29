@@ -1,6 +1,5 @@
 package chenyue.arfyp.userviews;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -19,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import chenyue.arfyp.navigation.CoordsCalculation;
+import chenyue.arfyp.navigation.DistanceEstimation;
 
 public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, Runnable, View.OnClickListener {
     private static final String TAG = "floor-plan view";
@@ -75,7 +75,8 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
 
     public void coordsFromWorldToMap(Bitmap floorplan) {
         double x, y;
-        double distance = calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]) / METER_PER_PIXEL;
+        double distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]) /
+        METER_PER_PIXEL;
         double degree = Math.atan2(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]);
         x = distance * Math.sin(degree - PLAN_DEGREE_OFFEST) + (double) floorplan.getWidth() / 2;
         y = (double) floorplan.getHeight() / 2 - distance * Math.cos(degree - PLAN_DEGREE_OFFEST);
@@ -88,14 +89,10 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
     }
 
     public void coordsFromMapToWorld(double x, double y) {
-        double distance = calculateDistance(x, y);
+        double distance = DistanceEstimation.calculateDistance(x, y);
         double degree = Math.atan2(x, y);
         double coordsN = distance * Math.cos(degree + PLAN_DEGREE_OFFEST) * METER_PER_PIXEL;
         double coordsE = distance * Math.sin(degree + PLAN_DEGREE_OFFEST) * METER_PER_PIXEL;
-    }
-
-    public static double calculateDistance(double E, double N) {
-        return Math.sqrt(Math.pow(E, 2) + Math.pow(N, 2));
     }
 
     @Override
