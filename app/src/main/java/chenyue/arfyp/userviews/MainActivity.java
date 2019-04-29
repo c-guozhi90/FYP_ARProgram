@@ -243,6 +243,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             public void onClick(View v) {
                 mapView.setVisibility(View.VISIBLE);
                 mapView.setClickable(true);
+                trackingView.setVisibility(View.INVISIBLE);
             }
         });
         installRequested = false;

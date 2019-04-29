@@ -37,6 +37,7 @@ public class Navigation implements Runnable {
             JSONArray tempArray = (JSONArray) tempObject.get("coordinates");
             newNode.coordinates[0] = (double) tempArray.get(0);
             newNode.coordinates[1] = (double) tempArray.get(1);
+            path.add(newNode);
         }
     }
 
@@ -98,7 +99,8 @@ public class Navigation implements Runnable {
             e.printStackTrace();
         }
     }
-    public static boolean isTargetReached(){
+
+    public static boolean isTargetReached() {
 
         return false;
     }

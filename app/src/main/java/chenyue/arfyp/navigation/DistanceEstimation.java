@@ -112,16 +112,16 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             bw.write("times " + ++times + "\n");
             bw.write("theta: " + Math.toDegrees(EulerDegrees[1] + 0.5 * Math.PI));
             bw.write("sin theta: " + Math.sin(EulerDegrees[1] + 0.5 * Math.PI));
-            bw.write("focal length " + focalLength[1] + "\n");
+            //bw.write("focal length " + focalLength[1] + "\n");
             bw.write("location height " + location.height() + "\n");
-            bw.write("orientation angle " + Math.toDegrees(orientationAngle) + "\n");
+            //bw.write("orientation angle " + Math.toDegrees(orientationAngle) + "\n");
             bw.write("angle_oag " + Math.toDegrees(angle_oag) + "\n");
-            bw.write("angle_JKB " + Math.toDegrees(angle_JKB) + "\n");
-            bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
+            //bw.write("angle_JKB " + Math.toDegrees(angle_JKB) + "\n");
+            //bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
             bw.write("nearest OG " + nearestOG + "\n");
-            bw.write("nearest OD " + nearestOD + "\n");
-            bw.write("calibrated OD " + calibratedOD + "\n");
-            bw.write("distance " + (calibratedOD + JK) + "\n");
+            bw.write("nearest OD(distance) " + nearestOD + "\n");
+            //bw.write("calibrated OD " + calibratedOD + "\n");
+            //bw.write("distance " + (calibratedOD + JK) + "\n");
             bw.flush();
             bw.close();
         } catch (IOException e) {
@@ -161,7 +161,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                     DetailedObject newDetails = new DetailedObject();
                     newDetails.informationSet = newInformationSet;
                     newDetails.location = object.first;
-                    newDetails.distance = new double[10];
+                    newDetails.distance = new double[25];
                     newDetails.averageDistance = -1000;
                     newDetails.estimationCounts = 0;
                     detailedObjectList.put(objectName, newDetails);
@@ -201,13 +201,12 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             for (String key : detailedObjectList.keySet()) {
                 DetailedObject detailedObject = detailedObjectList.get(key);
                 if (detailedObject == null) continue;
-                if (detailedObject.estimationCounts >= 5) {
-                    Arrays.sort(detailedObject.distance);
-                    detailedObject.averageDistance = (detailedObject.distance[0] + detailedObject.distance[1] + detailedObject.distance[2]) / 3;
+                if (detailedObject.estimationCounts == 25) {
                     continue;
                 }
                 detailedObject.distance[detailedObject.estimationCounts] = estimateDistance(detailedObject);
                 detailedObject.estimationCounts++;
+                Log.d(TAG, "for test count " + detailedObject.estimationCounts);
             }
             // 5. calculate the initial average coordinates of user and start navigation.
             // place the calculation here to simplify multithreading cooperation
@@ -217,18 +216,24 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             for (String key : detailedObjectList.keySet()) {
                 if (!MainActivity.NAVIGATION_MODE) break;
                 DetailedObject detailedObject = detailedObjectList.get(key);
-                if (detailedObject == null || detailedObject.estimationCounts < 10)
+                if (detailedObject == null || detailedObject.estimationCounts != 25)
                     continue;
+                Arrays.sort(detailedObject.distance);
+                detailedObject.averageDistance = calculateAverageDistance(detailedObject);
 
                 double[] objectCoords = new double[2];
                 //objectCoords = (double[])detailedObject.informationSet.getFacilityDetails().get("coordinates"));
                 objectCoords[0] = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("coordsE"));
                 objectCoords[1] = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("coordsN"));
                 double objectFacing = Double.parseDouble(detailedObject.informationSet.getFacilityDetails().get("facing"));
+//                Log.d(TAG, "for test objectlist size" + detailedObjectList.size());
+//                Log.d(TAG, String.format("for test object coords: %f %f", objectCoords[0], objectCoords[1]));
+//                Log.d(TAG, "for test average distance" + detailedObject.averageDistance);
                 sumCoords[0] = sumCoords[0] + objectCoords[0] + detailedObject.averageDistance * Math.sin(objectFacing);
                 sumCoords[1] = sumCoords[1] + objectCoords[1] + detailedObject.averageDistance * Math.cos(objectFacing);
                 objectNum++;
                 CoordsCalculation.floor = Integer.parseInt(detailedObject.informationSet.getFacilityDetails().get("floor"));
+                Log.d(TAG,"floor "+CoordsCalculation.floor);
 
                 // when facing north, the angle is 0, when facing south, the angle will be 180, east is 90, west is -90
             }
@@ -269,7 +274,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         float[] RMtx = new float[9];
         SensorManager.getRotationMatrix(RMtx, null, accelerometerValues, magneticFieldValues);
         SensorManager.getOrientation(RMtx, EulerDegrees);
-        Log.d(TAG, "degree " + EulerDegrees[1]);
+//        Log.d(TAG, "degree " + EulerDegrees[1]);
     }
 
     @Override
@@ -296,5 +301,15 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
 
     public static double calculateDistance(double E, double N) {
         return Math.sqrt(Math.pow(E, 2) + Math.pow(N, 2));
+    }
+
+    public double calculateAverageDistance(DetailedObject detailedObject) {
+        double sum = 0;
+        for (int idx = 1; idx < detailedObject.distance.length - 1; idx++) {
+//            Log.d(TAG, "for test " + detailedObject.distance[idx]);
+            sum += detailedObject.distance[idx];
+        }
+//        Log.d(TAG, "for test calculate " + sum);
+        return sum / (detailedObject.distance.length - 2);
     }
 }

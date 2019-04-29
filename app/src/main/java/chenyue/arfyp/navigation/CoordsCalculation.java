@@ -97,12 +97,6 @@ public class CoordsCalculation implements Runnable {
             while (readyForTracking) {
                 coordsTracking();
                 logDown();
-                try {
-                    // it is not needed to check and update the coordinates so frequently
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
@@ -148,11 +142,11 @@ public class CoordsCalculation implements Runnable {
         Log.d(TAG, "log file here: " + logPath);
         try {
             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
-            bw.write(String.format("cur coords:x % f, y % f ", curPosition[0], curPosition[1]));
-            bw.write(String.format("init coords:x % f, y % f ", initCoordinates[0], initCoordinates[1]));
-            bw.write(String.format("init camera coords:x % f, y % f ", initCameraCoords[0], initCameraCoords[1]));
-            bw.write("rotation in individual: " + curOrientationInIndividualSys);
-            bw.write("rotation in building: " + curOrientationInBuildingSys);
+            bw.write(String.format("cur coords:x % f, y % f \n", curPosition[0], curPosition[1]));
+            bw.write(String.format("init coords:x % f, y % f \n", initCoordinates[0], initCoordinates[1]));
+            bw.write(String.format("init camera coords:x % f, y % f \n", initCameraCoords[0], initCameraCoords[1]));
+            bw.write("rotation in individual: " + curOrientationInIndividualSys + "\n");
+            bw.write("rotation in building: " + curOrientationInBuildingSys + "\n");
             bw.flush();
             bw.close();
         } catch (IOException e) {

@@ -21,7 +21,7 @@ public class trackingOverlay extends SurfaceView implements SurfaceHolder.Callba
     public trackingOverlay(Context context, AttributeSet attributes) {
         super(context, attributes);
         holder = getHolder();
-        setZOrderMediaOverlay(true);
+        //setZOrderMediaOverlay(true);
         holder.setFormat(PixelFormat.TRANSLUCENT);
     }
 
