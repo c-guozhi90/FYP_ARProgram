@@ -214,7 +214,6 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             double[] sumCoords = {0, 0};
             if (detailedObjectList.size() == 0) continue;
             for (String key : detailedObjectList.keySet()) {
-                if (!MainActivity.NAVIGATION_MODE) break;
                 DetailedObject detailedObject = detailedObjectList.get(key);
                 if (detailedObject == null || detailedObject.estimationCounts != 25)
                     continue;

@@ -15,9 +15,10 @@ import java.util.LinkedList;
 
 public class Navigation implements Runnable {
     private static String TAG = "navigationThread";
-    private static LinkedList<Node> path = new LinkedList<>();
+    public final static LinkedList<Node> path = new LinkedList<>();
     private static boolean START_NAVIGATION = false;
     public static double navigationAngle = 0;   // from -PI to PI
+    public static boolean targetReached = false;
     private final Context context;
     private double pointsDirection;
     private double orientationOffset;
@@ -41,8 +42,14 @@ public class Navigation implements Runnable {
         }
     }
 
-    public static void setStart(boolean b) {
-        START_NAVIGATION = b;
+    public static void setStart(boolean toStart) {
+        START_NAVIGATION = toStart;
+    }
+
+    public static float[] returnTargetCoordinates() {
+        Node lastNode = path.getLast();
+        float[] coords = {(float) lastNode.coordinates[0], (float) lastNode.coordinates[1]};
+        return coords;
     }
 
     static class Node {
@@ -73,6 +80,10 @@ public class Navigation implements Runnable {
             synchronized (path) {
                 if (distance < 1) {
                     path.removeFirst();
+                }
+                if (path.size() == 0) {
+                    targetReached = true;
+                    break;
                 }
             }
             calculateNavigationAngle();

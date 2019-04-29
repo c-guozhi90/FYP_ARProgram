@@ -106,7 +106,6 @@ import static com.google.ar.core.TrackingState.TRACKING;
  */
 public class MainActivity extends AppCompatActivity implements GLSurfaceView.Renderer, Serializable {
     private static boolean READY_FOR_NEXT_FRAME = true;
-    public static boolean NAVIGATION_MODE = false;
     private static final String TAG = MainActivity.class.getSimpleName();
     public final Context context = this;
 
@@ -226,9 +225,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             public void onClick(View v) {
                 // start an activity for searching facilities
                 Intent intent = new Intent(context, SearchActivity.class);
+                estimator.setRequireEstimation(true);
                 estimatorThread = new Thread(estimator);
                 coordsTrackerThread = new Thread(coordsTracker);
                 drawMapThread = new Thread(mapView);
+                navigationThread = new Thread(navigator);
                 startActivityForResult(intent, 333);
             }
         });
@@ -318,7 +319,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             session = null;
             return;
         }
-        estimator.setRequireEstimation(true);
         glView.onResume();
         displayRotationHelper.onResume();
         if (coordsTrackerThread != null && coordsTrackerThread.isAlive()) {
@@ -700,7 +700,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     }
 
     private void quitNavigation() {
-        NAVIGATION_MODE = false;
         estimatorThread.interrupt();
         coordsTrackerThread.interrupt();
         drawMapThread.interrupt();
@@ -716,6 +715,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             if (coordsTrackerThread != null) coordsTrackerThread.start();
             if (estimatorThread != null) estimatorThread.start();
             if (drawMapThread != null) drawMapThread.start();
+            if (navigationThread != null) navigationThread.start();
             quit_navigation.setVisibility(View.VISIBLE);
             search_button.setVisibility(View.INVISIBLE);
             // map button visibility is controlled by estimator
