@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
     private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
     private final TextRenderer textRenderer = new TextRenderer();
-    private final ArrowRenderer arrowRenderer=new ArrowRenderer();
+    private final ArrowRenderer arrowRenderer = new ArrowRenderer();
 
     // Temporary matrix allocated here to reduce number of allocations for each frame.
     private final float[] anchorMatrix = new float[16];
@@ -426,7 +426,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
             // Draw background.
             backgroundRenderer.draw(frame);
-            arrowRenderer.draw();
+            if (Navigation.START_NAVIGATION && !Navigation.TARGET_REACHED) {
+                arrowRenderer.updateModelMatrix((float) Navigation.navigationAngle);
+                arrowRenderer.draw();
+            }
+
 
             // If not tracking, don't draw 3d objects.
             if (camera.getTrackingState() == TrackingState.PAUSED) {

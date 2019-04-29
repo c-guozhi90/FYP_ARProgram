@@ -96,7 +96,7 @@ public class CoordsCalculation implements Runnable {
 
             while (readyForTracking) {
                 coordsTracking();
-                logDown();
+                //logDown();
             }
         }
     }

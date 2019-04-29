@@ -19,7 +19,7 @@ import java.util.NoSuchElementException;
 public class Navigation implements Runnable {
     private static String TAG = "navigationThread";
     public final static LinkedList<Node> path = new LinkedList<>();
-    private static boolean START_NAVIGATION = false;
+    public static boolean START_NAVIGATION = false;
     public static double navigationAngle = 0;   // from -PI to PI
     public static boolean TARGET_REACHED = false;
     private final Context context;
@@ -46,10 +46,6 @@ public class Navigation implements Runnable {
         }
     }
 
-    public static void setStart(boolean toStart) {
-        START_NAVIGATION = toStart;
-    }
-
     public static float[] returnTargetCoordinates() {
         Node lastNode = path.getLast();
         float[] coords = {(float) lastNode.coordinates[0], (float) lastNode.coordinates[1]};
@@ -71,6 +67,7 @@ public class Navigation implements Runnable {
     }
 
     public void run() {
+        Log.d(TAG, "navigation thread started");
         while (true) {
             if (!START_NAVIGATION) {
                 try {

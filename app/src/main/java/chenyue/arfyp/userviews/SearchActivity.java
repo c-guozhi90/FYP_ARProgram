@@ -205,18 +205,19 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
             JSONArray jsonArray = new JSONArray(results);
             if (jsonArray.length() == 0) throw new IOException();
             Navigation.setPath(jsonArray);
-            Navigation.setStart(true);
+            Navigation.START_NAVIGATION = true;
 
         } catch (IOException | JSONException e) {
             e.printStackTrace();
             Log.e(TAG, "path searching failed!");
-            Navigation.setStart(false);
+            Navigation.START_NAVIGATION = false;
         }
     }
 
     private void startNavigation(int selectedTarget) {
         new Thread(() -> {
             String target = searchResultsItems.getItem(selectedTarget);
+            Log.d(TAG, target);
             while (true) {
                 if (CoordsCalculation.readyForTracking) {
                     searchNavigationPath(CoordsCalculation.initCoordinates, CoordsCalculation.floor, target);

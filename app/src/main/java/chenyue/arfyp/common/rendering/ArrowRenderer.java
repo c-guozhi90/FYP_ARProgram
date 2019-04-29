@@ -94,8 +94,9 @@ public class ArrowRenderer {
         Matrix.multiplyMM(this.modelMatrix, 0, modelMatrix, 0, scaleMatrix, 0);
     }
 
-    public void updateModelMatrix(float rotatedAngle) {
-        Matrix.rotateM(rotatedMatirx, 0, modelMatrix, 0, rotatedAngle, 0, 0, -1);
+    public void updateModelMatrix(float rotatedRadians) {
+        float rotateDegree = (float) Math.toDegrees(rotatedRadians);
+        Matrix.rotateM(rotatedMatirx, 0, modelMatrix, 0, rotateDegree, 0.0f, -0.25f, -1.0f);
     }
 
     public void draw() {
@@ -110,7 +111,7 @@ public class ArrowRenderer {
         ShaderUtil.checkGLError(TAG, "Before draw");
 
         // set matrix into shader
-        GLES20.glUniformMatrix4fv(modelUniform, 1, false, modelMatrix, 0);
+        GLES20.glUniformMatrix4fv(modelUniform, 1, false, rotatedMatirx, 0);
 
 
         // set render mode
