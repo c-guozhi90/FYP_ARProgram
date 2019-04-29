@@ -203,17 +203,18 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
             dis.close();
             dos.close();
             JSONArray jsonArray = new JSONArray(results);
+            if (jsonArray.length() == 0) throw new IOException();
             Navigation.setPath(jsonArray);
             Navigation.setStart(true);
 
         } catch (IOException | JSONException e) {
             e.printStackTrace();
+            Log.e(TAG, "path searching failed!");
             Navigation.setStart(false);
         }
     }
 
     private void startNavigation(int selectedTarget) {
-        MainActivity.NAVIGATION_MODE = true;
         new Thread(() -> {
             String target = searchResultsItems.getItem(selectedTarget);
             while (true) {

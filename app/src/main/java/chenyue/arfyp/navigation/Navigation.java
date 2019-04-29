@@ -1,7 +1,9 @@
 package chenyue.arfyp.navigation;
 
 import android.content.Context;
+import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,14 +20,16 @@ public class Navigation implements Runnable {
     public final static LinkedList<Node> path = new LinkedList<>();
     private static boolean START_NAVIGATION = false;
     public static double navigationAngle = 0;   // from -PI to PI
-    public static boolean targetReached = false;
+    public static boolean TARGET_REACHED = false;
     private final Context context;
     private double pointsDirection;
     private double orientationOffset;
     private double distance;
+    private Handler handler;
 
     public Navigation(Context context) {
         this.context = context;
+        handler = new Handler();
     }
 
     public static void setPath(JSONArray jsonArray) throws JSONException {
@@ -61,8 +65,9 @@ public class Navigation implements Runnable {
 
     public static void calculateNavigationAngle() {
         Node aheadNode = path.getFirst();
+        // point vector from current position to first path node, in building sys.
         double pointDegree = Math.atan2(aheadNode.coordinates[0] - CoordsCalculation.curPosition[0], aheadNode.coordinates[1] - CoordsCalculation.curPosition[1]);
-
+        navigationAngle = DistanceEstimation.adjustAngle(pointDegree - CoordsCalculation.curOrientationInBuildingSys);
     }
 
     public void run() {
@@ -75,18 +80,21 @@ public class Navigation implements Runnable {
                 }
                 continue;
             }
-            Node aheadNode = path.get(0);
-            distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1], aheadNode.coordinates[0], aheadNode.coordinates[1]);
             synchronized (path) {
+                Node aheadNode = path.get(0);
+                distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1], aheadNode.coordinates[0], aheadNode.coordinates[1]);
                 if (distance < 1) {
                     path.removeFirst();
                 }
                 if (path.size() == 0) {
-                    targetReached = true;
+                    TARGET_REACHED = true;
+                    handler.post(() -> {
+                        Toast.makeText(context, "target reached!", Toast.LENGTH_LONG).show();
+                    });
                     break;
                 }
+                calculateNavigationAngle();
             }
-            calculateNavigationAngle();
         }
     }
 
