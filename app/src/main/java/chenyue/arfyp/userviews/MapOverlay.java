@@ -23,12 +23,14 @@ import java.io.InputStream;
 
 import chenyue.arfyp.navigation.CoordsCalculation;
 import chenyue.arfyp.navigation.DistanceEstimation;
+import chenyue.arfyp.navigation.Navigation;
 
 public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, Runnable, View.OnClickListener {
     private static final String TAG = "floor-plan view";
+    private final Paint paintForTarget = new Paint();
     private Context context;
     private SurfaceHolder holder;
-    private final Paint paint = new Paint();
+    private final Paint paintForStart = new Paint();
     private Canvas canvas;
     public static boolean requireDraw = true;
     private static double PLAN_DEGREE_OFFEST = 0;//Math.toRadians(-51); // always positive
@@ -45,10 +47,13 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
         holder = getHolder();
         this.context = context;
         setVisibility(SurfaceView.INVISIBLE);
-        paint.setColor(Color.RED);
-        paint.setStyle(Paint.Style.FILL);
-        paint.setStrokeWidth(3.0f);
+        paintForStart.setColor(Color.RED);
+        paintForStart.setStyle(Paint.Style.FILL);
+        paintForStart.setStrokeWidth(3.0f);
         coordsInPlan = new double[2];
+        paintForTarget.setColor(Color.BLUE);
+        paintForTarget.setStyle(Paint.Style.FILL);
+        paintForTarget.setStrokeWidth(3.0f);
         this.setOnClickListener(this);
     }
 
@@ -92,9 +97,16 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
             float[] temp = {(float) coordsInPlan[0], (float) coordsInPlan[1]};
             drawDirectionTriangle(temp, canvas);
             planToScreenTransform.mapPoints(temp);
-            canvas.drawCircle(temp[0], temp[1], 15f, paint);
+            synchronized (Navigation.path) {
+                if (Navigation.path.size() != 0) {
+                    float[] targetCoords = Navigation.returnTargetCoordinates();
+                    planToScreenTransform.mapPoints(targetCoords);
+                    canvas.drawCircle(targetCoords[0], targetCoords[1], 15f, paintForTarget);
+                }
+            }
+            canvas.drawCircle(temp[0], temp[1], 15f, paintForStart);
 
-            //canvas.drawPoint((float) coordsInPlan[0], (float) coordsInPlan[1], paint);
+            //canvas.drawPoint((float) coordsInPlan[0], (float) coordsInPlan[1], paintForStart);
 //            tempBitmap.recycle();
         } catch (Exception e) {
             e.printStackTrace();
@@ -193,6 +205,6 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
         path.lineTo(pointLeft[0], pointLeft[1]);
         path.lineTo(pointRight[0], pointRight[1]);
         path.close();
-        canvas.drawPath(path, paint);
+        canvas.drawPath(path, paintForStart);
     }
 }
