@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         // Set up tracking related stuff
         tracker = new MultiBoxTracker(this);
         estimator = new DistanceEstimation(this, this, tracker);
-        coordsTracker = new CoordsCalculation();
+        coordsTracker = new CoordsCalculation(this);
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         gSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);

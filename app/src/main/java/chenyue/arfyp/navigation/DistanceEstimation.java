@@ -128,7 +128,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             e.printStackTrace();
         }
         /*log in file end*/
-        return calibratedOD;
+        return nearestOD;
     }
 
     public void run() {
@@ -161,7 +161,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                     DetailedObject newDetails = new DetailedObject();
                     newDetails.informationSet = newInformationSet;
                     newDetails.location = object.first;
-                    newDetails.distance = new double[5];
+                    newDetails.distance = new double[10];
                     newDetails.averageDistance = -1000;
                     newDetails.estimationCounts = 0;
                     detailedObjectList.put(objectName, newDetails);
@@ -217,7 +217,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             for (String key : detailedObjectList.keySet()) {
                 if (!MainActivity.NAVIGATION_MODE) break;
                 DetailedObject detailedObject = detailedObjectList.get(key);
-                if (detailedObject == null || detailedObject.estimationCounts < 5)
+                if (detailedObject == null || detailedObject.estimationCounts < 10)
                     continue;
 
                 double[] objectCoords = new double[2];
@@ -234,7 +234,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             }
             // after calculation for initCoordinates, it can start the navigation(by setting the readyForTracking with true)
             // Rotation about the y axis. that is because the initial coordinates system in ARCore for camera is special.
-            // Its Y axis is pointing up, X axis is pointing to right, and Z axis is pointing to forward
+            // Its Y axis is pointing up, X axis is pointing to right, and Z axis is pointing to the back
             if (!CoordsCalculation.readyForTracking && objectNum > 0) {
                 CoordsCalculation.prepareTracking(sumCoords[0] / objectNum, sumCoords[1] / objectNum, camera, orientationAngle);
                 handler.post(() -> {
@@ -247,11 +247,12 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                 Log.d(TAG, "estimation end");
             }
             try {
-                Thread.sleep(50); // cannot calculate too fast
+                Thread.sleep(50); // cannot calculate too fast, because the location of detection boxes may mot be changed
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        // it still has bug in this thread. Infinite waiting will occur when the object detection is not accurate.
     }
 
 
