@@ -95,6 +95,7 @@ import chenyue.arfyp.common.rendering.PlaneRenderer;
 import chenyue.arfyp.common.rendering.TextRenderer;
 import chenyue.arfyp.navigation.CoordsCalculation;
 import chenyue.arfyp.navigation.DistanceEstimation;
+import chenyue.arfyp.navigation.Navigation;
 
 import static com.google.ar.core.TrackingState.TRACKING;
 
@@ -155,6 +156,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     private CoordsCalculation coordsTracker;
     public Thread coordsTrackerThread;
     public Thread drawMapThread;
+    public Navigation navigator;
+    public Thread navigationThread;
     private SensorManager sensorManager;
     private Sensor gSensor;
     private Sensor aSensor;
@@ -203,6 +206,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         tracker = new MultiBoxTracker(this);
         estimator = new DistanceEstimation(this, this, tracker);
         coordsTracker = new CoordsCalculation(this);
+        navigator = new Navigation(this);
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         gSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         aSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -238,6 +242,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             @Override
             public void onClick(View v) {
                 mapView.setVisibility(View.VISIBLE);
+                mapView.setClickable(true);
             }
         });
         installRequested = false;

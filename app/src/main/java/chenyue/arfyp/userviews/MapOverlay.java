@@ -41,6 +41,7 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
         paint.setStrokeWidth(3.0f);
         coordsInPlan = new double[2];
         setZOrderOnTop(true);
+        this.setOnClickListener(this);
     }
 
     @Override
@@ -76,7 +77,7 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
     public void coordsFromWorldToMap(Bitmap floorplan) {
         double x, y;
         double distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]) /
-        METER_PER_PIXEL;
+                METER_PER_PIXEL;
         double degree = Math.atan2(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1]);
         x = distance * Math.sin(degree - PLAN_DEGREE_OFFEST) + (double) floorplan.getWidth() / 2;
         y = (double) floorplan.getHeight() / 2 - distance * Math.cos(degree - PLAN_DEGREE_OFFEST);
@@ -124,6 +125,7 @@ public class MapOverlay extends SurfaceView implements SurfaceHolder.Callback, R
     @Override
     public void onClick(View v) {
         // TODO control the floor plan draw thread?
+        setClickable(false);
         setVisibility(SurfaceView.INVISIBLE);
     }
 }
