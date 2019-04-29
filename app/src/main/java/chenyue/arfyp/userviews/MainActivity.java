@@ -90,6 +90,7 @@ import chenyue.arfyp.common.helpers.FullScreenHelper;
 import chenyue.arfyp.common.helpers.SnackbarHelper;
 import chenyue.arfyp.common.helpers.TapHelper;
 import chenyue.arfyp.common.informationUtil.InformationManager;
+import chenyue.arfyp.common.rendering.ArrowRenderer;
 import chenyue.arfyp.common.rendering.BackgroundRenderer;
 import chenyue.arfyp.common.rendering.PlaneRenderer;
 import chenyue.arfyp.common.rendering.TextRenderer;
@@ -128,6 +129,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
     private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
     private final TextRenderer textRenderer = new TextRenderer();
+    private final ArrowRenderer arrowRenderer=new ArrowRenderer();
 
     // Temporary matrix allocated here to reduce number of allocations for each frame.
     private final float[] anchorMatrix = new float[16];
@@ -231,6 +233,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 drawMapThread = new Thread(mapView);
                 navigationThread = new Thread(navigator);
                 startActivityForResult(intent, 333);
+
             }
         });
         quit_navigation.setOnClickListener(new View.OnClickListener() {
@@ -368,7 +371,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         try {
             // Create the texture and pass it to ARCore session to be filled during update().
             backgroundRenderer.createOnGlThread(/*context=*/ this);
-            textRenderer.createOnTread(/*context*/ this);
+            textRenderer.createOnGLThread(/*context*/ this);
+            arrowRenderer.createOnGLThread(/*context*/this);
             // set up tensorflow detector and tracker
             detector = TensorFlowObjectDetectionAPIModel.create(this.getAssets(), MODEL_PATH, LABELS_PATH, TF_INPUT_SIZE);
             trackingView.addDrawCallback(new trackingOverlay.DrawCallback() {
@@ -422,6 +426,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
             // Draw background.
             backgroundRenderer.draw(frame);
+            arrowRenderer.draw();
 
             // If not tracking, don't draw 3d objects.
             if (camera.getTrackingState() == TrackingState.PAUSED) {

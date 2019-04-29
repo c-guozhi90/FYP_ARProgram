@@ -124,6 +124,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
             //bw.write("distance " + (calibratedOD + JK) + "\n");
             bw.flush();
             bw.close();
+
         } catch (IOException e) {
             e.printStackTrace();
         }

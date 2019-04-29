@@ -42,7 +42,7 @@ public class TextRenderer {
     public TextRenderer() {
     }
 
-    public void createOnTread(Context context) throws IOException {
+    public void createOnGLThread(Context context) throws IOException {
         // load shaders
         final int vertextShader = ShaderUtil.loadGLShader(TAG, context, GLES20.GL_VERTEX_SHADER, VERTEX_SHADER_NAME);
         final int fragmentShader = ShaderUtil.loadGLShader(TAG, context, GLES20.GL_FRAGMENT_SHADER, FRAMENGT_SHADER_NAME);
