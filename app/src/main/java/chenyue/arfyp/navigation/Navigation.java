@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.LinkedList;
+import java.util.NoSuchElementException;
 
 public class Navigation implements Runnable {
     private static String TAG = "navigationThread";
@@ -23,7 +24,6 @@ public class Navigation implements Runnable {
     public static boolean TARGET_REACHED = false;
     private final Context context;
     private double pointsDirection;
-    private double orientationOffset;
     private double distance;
     private Handler handler;
 
@@ -63,11 +63,11 @@ public class Navigation implements Runnable {
 
     }
 
-    public static void calculateNavigationAngle() {
+    public void calculateNavigationAngle() {
         Node aheadNode = path.getFirst();
         // point vector from current position to first path node, in building sys.
-        double pointDegree = Math.atan2(aheadNode.coordinates[0] - CoordsCalculation.curPosition[0], aheadNode.coordinates[1] - CoordsCalculation.curPosition[1]);
-        navigationAngle = DistanceEstimation.adjustAngle(pointDegree - CoordsCalculation.curOrientationInBuildingSys);
+        pointsDirection = Math.atan2(aheadNode.coordinates[0] - CoordsCalculation.curPosition[0], aheadNode.coordinates[1] - CoordsCalculation.curPosition[1]);
+        navigationAngle = DistanceEstimation.adjustAngle(pointsDirection - CoordsCalculation.curOrientationInBuildingSys);
     }
 
     public void run() {
@@ -95,6 +95,7 @@ public class Navigation implements Runnable {
                 }
                 calculateNavigationAngle();
             }
+            logDown();
         }
     }
 
@@ -107,14 +108,13 @@ public class Navigation implements Runnable {
         Log.d(TAG, "log file here: " + logPath);
         try {
             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
-            bw.write("current target node: " + path.getFirst().nodeName);
-            bw.write("distance: " + distance);
-            bw.write("navigation angle: " + navigationAngle);
-            bw.write("points direction: " + pointsDirection);
-            bw.write("orientation offset: " + orientationOffset);
+            bw.write("current target node: " + path.getFirst().nodeName + "\n");
+            bw.write("distance: " + distance + "\n");
+            bw.write("navigation angle: " + navigationAngle + "\n");
+            bw.write("points direction: " + pointsDirection + "\n");
             bw.flush();
             bw.close();
-        } catch (IOException e) {
+        } catch (IOException | NoSuchElementException e) {
             e.printStackTrace();
         }
     }
