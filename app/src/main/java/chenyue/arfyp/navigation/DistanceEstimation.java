@@ -7,7 +7,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.nfc.Tag;
 import android.os.Handler;
 import android.util.Log;
 import android.util.Pair;
@@ -20,10 +19,8 @@ import com.google.ar.core.Camera;
 import com.google.ar.core.CameraIntrinsics;
 
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -31,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 
 import chenyue.arfyp.common.informationUtil.InformationManager;
-import chenyue.arfyp.userviews.MainActivity;
 import chenyue.arfyp.userviews.R;
 
 public class DistanceEstimation implements SensorEventListener, Runnable {
@@ -43,7 +39,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     private float[] magneticFieldValues = new float[3];
     private float[] accelerometerValues = new float[3];
     private double orientationAngle;
-    private boolean requireEstimation = true;
+    public static boolean REQUIRE_ESTIMATION = true;
     private Context context;
     private Activity mainActivity;
     private Handler handler;
@@ -137,7 +133,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         // But here, a new sub-thread will be started automatically within the constructor of informationManager.
         Log.d(TAG, "estimation started");
         List<Pair<RectF, String>> qualifiedTrackedObjects;
-        while (requireEstimation) {  // here, may set a boolean variable
+        while (REQUIRE_ESTIMATION) {  // here, may set a boolean variable
             // 1. get qualified detected object(not near the edge) from tracker in sync manner
             synchronized (tracker.getTrackedObjects()) {
                 do {
@@ -233,7 +229,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                 sumCoords[1] = sumCoords[1] + objectCoords[1] + detailedObject.averageDistance * Math.cos(objectFacing);
                 objectNum++;
                 CoordsCalculation.floor = Integer.parseInt(detailedObject.informationSet.getFacilityDetails().get("floor"));
-                Log.d(TAG,"floor "+CoordsCalculation.floor);
+                Log.d(TAG, "floor " + CoordsCalculation.floor);
 
                 // when facing north, the angle is 0, when facing south, the angle will be 180, east is 90, west is -90
             }
@@ -248,7 +244,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                             mapButton.setVisibility(View.VISIBLE);
                         }
                 );
-                requireEstimation = false;
+                REQUIRE_ESTIMATION = false;
                 Log.d(TAG, "estimation end");
             }
             try {
@@ -292,7 +288,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     }
 
     public void setRequireEstimation(boolean operation) {
-        requireEstimation = operation;
+        REQUIRE_ESTIMATION = operation;
     }
 
     public static double calculateDistance(double x1, double y1, double x2, double y2) {

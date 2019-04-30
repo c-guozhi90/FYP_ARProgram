@@ -722,9 +722,15 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == SearchActivity.START_FOR_NAVIGATION) {
             if (coordsTrackerThread != null) coordsTrackerThread.start();
-            if (estimatorThread != null) estimatorThread.start();
+            if (estimatorThread != null) {
+                DistanceEstimation.REQUIRE_ESTIMATION = true;
+                estimatorThread.start();
+            }
             if (drawMapThread != null) drawMapThread.start();
-            if (navigationThread != null) navigationThread.start();
+            if (navigationThread != null) {
+                Navigation.TARGET_REACHED = false;  // the flag controlling the loop in navigation thread
+                navigationThread.start();
+            }
             quit_navigation.setVisibility(View.VISIBLE);
             search_button.setVisibility(View.INVISIBLE);
             // map button visibility is controlled by estimator

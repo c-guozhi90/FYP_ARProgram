@@ -68,7 +68,7 @@ public class Navigation implements Runnable {
 
     public void run() {
         Log.d(TAG, "navigation thread started");
-        while (true) {
+        while (!TARGET_REACHED) {
             if (!START_NAVIGATION) {
                 try {
                     Thread.sleep(500);
@@ -80,19 +80,17 @@ public class Navigation implements Runnable {
             synchronized (path) {
                 Node aheadNode = path.get(0);
                 distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1], aheadNode.coordinates[0], aheadNode.coordinates[1]);
-                if (distance < 1) {
+                if (distance < 2) {
                     path.removeFirst();
+                    logDown();
                 }
                 if (path.size() == 0) {
                     TARGET_REACHED = true;
-                    handler.post(() -> {
-                        Toast.makeText(context, "target reached!", Toast.LENGTH_LONG).show();
-                    });
+                    handler.post(() -> Toast.makeText(context, "target reached!", Toast.LENGTH_LONG).show());
                     break;
                 }
                 calculateNavigationAngle();
             }
-            logDown();
         }
     }
 
@@ -102,9 +100,9 @@ public class Navigation implements Runnable {
      */
     public void logDown() {
         String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log-navigation.txt";
-        Log.d(TAG, "log file here: " + logPath);
         try {
             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
+            bw.write("user current position: " + CoordsCalculation.curPosition[0] + " " + CoordsCalculation.curPosition[1] + "\n");
             bw.write("current target node: " + path.getFirst().nodeName + "\n");
             bw.write("distance: " + distance + "\n");
             bw.write("navigation angle: " + navigationAngle + "\n");
