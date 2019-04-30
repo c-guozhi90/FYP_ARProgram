@@ -26,6 +26,7 @@ public class Navigation implements Runnable {
     private double pointsDirection;
     private double distance;
     private Handler handler;
+    public static String target = "";
 
     public Navigation(Context context) {
         this.context = context;
@@ -44,6 +45,7 @@ public class Navigation implements Runnable {
             newNode.coordinates[1] = (double) tempArray.get(1);
             path.add(newNode);
         }
+        target = path.getLast().nodeName;
     }
 
     public static float[] returnTargetCoordinates() {
@@ -81,7 +83,7 @@ public class Navigation implements Runnable {
                 Node aheadNode;
                 aheadNode = path.get(0);
                 distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1], aheadNode.coordinates[0], aheadNode.coordinates[1]);
-                if (distance < 2) {
+                if (distance < 1.5) {
                     path.removeFirst();
                     if (path.size() != 0) {
                         aheadNode = path.get(0);

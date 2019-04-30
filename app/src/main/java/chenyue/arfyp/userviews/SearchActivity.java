@@ -18,13 +18,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.Socket;
@@ -192,16 +195,23 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
     private void searchNavigationPath(double[] startPoint, int floor, String target) {
         try {
             Socket newEnquiry = new Socket("139.199.88.99", 3001);    // set up a website
-            DataOutputStream dos = new DataOutputStream(newEnquiry.getOutputStream());
-            DataInputStream dis = new DataInputStream(newEnquiry.getInputStream());
+            OutputStream os = newEnquiry.getOutputStream();
+            InputStream is = newEnquiry.getInputStream();
+            DataOutputStream dos = new DataOutputStream(os);
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
             dos.writeInt(0); // operation code
             dos.writeDouble(startPoint[0]);
             dos.writeDouble(startPoint[1]);
             dos.writeInt(floor);
-            dos.writeUTF(target);
-            String results = dis.readUTF();
-            dis.close();
+
+            bw.write(target);
+
+            String results = br.readLine();
+            bw.close();
+            br.close();
             dos.close();
+
             JSONArray jsonArray = new JSONArray(results);
             if (jsonArray.length() == 0) throw new IOException();
             Navigation.setPath(jsonArray);

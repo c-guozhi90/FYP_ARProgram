@@ -508,10 +508,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             /* tensorflow detection start */
 
             //Here should be asymmetric detection.
-            if (READY_FOR_NEXT_FRAME && camera.getTrackingState() == TRACKING) {
-                READY_FOR_NEXT_FRAME = false;
+
+            if (READY_FOR_NEXT_FRAME) {
                 Image image = frame.acquireCameraImage();
                 detection = tensorflowThread(image);
+                READY_FOR_NEXT_FRAME = false;
                 new Thread(detection).start();
             }
 
@@ -538,6 +539,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
+                Log.d(TAG, "tensorflow thread started");
                 if (cameraCharacteristics == null) return;
                 int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) - TensorflowUtils.getScreenOrientation(mainActivity);
                 Logger logger = new Logger(TAG);

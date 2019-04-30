@@ -43,6 +43,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
     private Context context;
     private Activity mainActivity;
     private Handler handler;
+    private double nearestOG;
 
 
     // not essential
@@ -88,13 +89,13 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         // the fx=F*sx, where sx is the num of pixels per millimeter in width of an image. so it is easy to conclude that the focal length
         // is measured by millimeter
         float focalLength[] = intrinsics.getFocalLength();
-        double nearestOG = realHeight * focalLength[1] / location.height();
-        double angle_oag = Math.atan(focalLength[1] / location.height() / 2);
+        nearestOG = realHeight * focalLength[1] / location.width(); /***here, why use width? because the camera was transposed***/
+        double angle_oag = Math.atan(focalLength[1] / location.width() / 2);
         double nearestOD = (nearestOG / Math.sin(angle_oag) - realHeight * Math.sin(EulerDegrees[1] + 0.5 * Math.PI) / Math.sin(angle_oag)) * Math.sin(angle_oag + EulerDegrees[1] + 0.5 * Math.PI);
         //double orientedDifference = Math.abs(-objectFacing - EulerDegrees[0]);
         // calculate the OD in convenient way(lose accuracy). if the camera dose not facing the object, the error will increase.
         double calibratedOD = nearestOD / Math.sin(Math.atan(focalLength[0] / Math.abs(location.centerX() - O[0])));
-        double BJ = nearestOD * 0.5 * location.width() / focalLength[0];
+        double BJ = nearestOD * 0.5 * location.height() / focalLength[0];
         //orientationAngle = adjustAngle(DistanceEstimation.EulerDegrees[0] + Math.atan2(location.centerX() - O[0], focalLength[0]));
         orientationAngle = adjustAngle(objectFacing - Math.PI);
         double angle_JKB = Math.abs(adjustAngle(objectFacing + 0.5 * Math.PI) - orientationAngle);
@@ -322,10 +323,15 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
      */
     public void logDown(double data) {
         try {
-            String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log.txt";
+            String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log-distance.txt";
             Log.d(TAG, "data has been logged into " + logPath);
             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
-            bw.write(data + "\n");
+            bw.write("nearest OG:" + nearestOG + "\n");
+            bw.write("distance: " + data + "\n");
+            bw.write("pitch: " + Math.toDegrees(EulerDegrees[1]) + "\n");
+
+            bw.flush();
+            bw.close();
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "something wrong with logging");
