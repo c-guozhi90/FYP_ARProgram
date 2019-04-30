@@ -39,12 +39,12 @@ public class ArrowRenderer {
     private final int[] textureId = new int[1];
     private final float[] VOA = {
             // x    y       u   v       // u v will start from top-left
-            -0.2f, -0.4f, 0.0f, 1.0f,   // bottom-left
-            -0.2f, -0.1f, 0.0f, 0.0f,   // top-left
-            0.2f, -0.1f, 1.0f, 0.0f,    // top-right
-            0.2f, -0.1f, 1.0f, 0.0f,    // top-right
-            -0.2f, -0.4f, 0.0f, 1.0f,   // bottom-left
-            0.2f, -0.4f, 1.0f, 1.0f};   // bottom-right
+            -0.2f, -0.15f, 0.0f, 1.0f,   // bottom-left
+            -0.2f,  0.15f, 0.0f, 0.0f,   // top-left
+             0.2f,  0.15f, 1.0f, 0.0f,    // top-right
+             0.2f,  0.15f, 1.0f, 0.0f,    // top-right
+            -0.2f, -0.15f, 0.0f, 1.0f,   // bottom-left
+             0.2f, -0.15f, 1.0f, 1.0f};   // bottom-right
 
     public ArrowRenderer() {
     }
@@ -92,11 +92,14 @@ public class ArrowRenderer {
         scaleMatrix[5] = scaleFactor;
         scaleMatrix[10] = scaleFactor;
         Matrix.multiplyMM(this.modelMatrix, 0, modelMatrix, 0, scaleMatrix, 0);
+
     }
 
     public void updateModelMatrix(float rotatedRadians) {
         float rotateDegree = (float) Math.toDegrees(rotatedRadians);
-        Matrix.rotateM(rotatedMatirx, 0, modelMatrix, 0, rotateDegree, 0.0f, -0.25f, -1.0f);
+        Matrix.rotateM(rotatedMatirx, 0, modelMatrix, 0, rotateDegree, 0, 0, -1.0f);
+        Matrix.translateM(rotatedMatirx, 0, 0, -0.5f, 0);
+
     }
 
     public void draw() {
