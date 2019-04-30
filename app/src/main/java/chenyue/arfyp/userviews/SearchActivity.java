@@ -236,7 +236,7 @@ public class SearchActivity extends Activity implements View.OnClickListener, Ad
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        goThereButton.setVisibility(View.VISIBLE);
         selected = position;
+        goThereButton.setVisibility(View.VISIBLE);
     }
 }

@@ -78,10 +78,15 @@ public class Navigation implements Runnable {
                 continue;
             }
             synchronized (path) {
-                Node aheadNode = path.get(0);
+                Node aheadNode;
+                aheadNode = path.get(0);
                 distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1], aheadNode.coordinates[0], aheadNode.coordinates[1]);
                 if (distance < 2) {
                     path.removeFirst();
+                    if (path.size() != 0) {
+                        aheadNode = path.get(0);
+                        distance = DistanceEstimation.calculateDistance(CoordsCalculation.curPosition[0], CoordsCalculation.curPosition[1], aheadNode.coordinates[0], aheadNode.coordinates[1]);
+                    }
                     logDown();
                 }
                 if (path.size() == 0) {

@@ -12,8 +12,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import chenyue.arfyp.common.informationUtil.InformationManager;
-
 /* we cannot determine the text coordinates directly.
  * The coordinates should be estimated by the anchor which will be returned by the ARCore.
  * we start rendering text at the anchor with no adjustment. And the Anchor is always in the
@@ -34,17 +32,17 @@ public class ArrowRenderer {
     private int positionAttribute;
     private int modelUniform;
     private final float[] modelMatrix = new float[16];
-    private final float[] rotatedMatirx = new float[16];
+    private final float[] transformedMatirx = new float[16];
     private int program;
     private final int[] textureId = new int[1];
     private final float[] VOA = {
             // x    y       u   v       // u v will start from top-left
             -0.2f, -0.15f, 0.0f, 1.0f,   // bottom-left
-            -0.2f,  0.15f, 0.0f, 0.0f,   // top-left
-             0.2f,  0.15f, 1.0f, 0.0f,    // top-right
-             0.2f,  0.15f, 1.0f, 0.0f,    // top-right
+            -0.2f, 0.15f, 0.0f, 0.0f,   // top-left
+            0.2f, 0.15f, 1.0f, 0.0f,    // top-right
+            0.2f, 0.15f, 1.0f, 0.0f,    // top-right
             -0.2f, -0.15f, 0.0f, 1.0f,   // bottom-left
-             0.2f, -0.15f, 1.0f, 1.0f};   // bottom-right
+            0.2f, -0.15f, 1.0f, 1.0f};   // bottom-right
 
     public ArrowRenderer() {
     }
@@ -97,9 +95,8 @@ public class ArrowRenderer {
 
     public void updateModelMatrix(float rotatedRadians) {
         float rotateDegree = (float) Math.toDegrees(rotatedRadians);
-        Matrix.rotateM(rotatedMatirx, 0, modelMatrix, 0, rotateDegree, 0, 0, -1.0f);
-        Matrix.translateM(rotatedMatirx, 0, 0, -0.5f, 0);
-
+        Matrix.translateM(transformedMatirx, 0, modelMatrix, 0, 0, -0.5f, 0);
+        Matrix.rotateM(transformedMatirx, 0, transformedMatirx, 0, rotateDegree, 0, 0, -1.0f);
     }
 
     public void draw() {
@@ -114,7 +111,7 @@ public class ArrowRenderer {
         ShaderUtil.checkGLError(TAG, "Before draw");
 
         // set matrix into shader
-        GLES20.glUniformMatrix4fv(modelUniform, 1, false, rotatedMatirx, 0);
+        GLES20.glUniformMatrix4fv(modelUniform, 1, false, transformedMatirx, 0);
 
 
         // set render mode

@@ -48,10 +48,10 @@ public class CoordsCalculation implements Runnable {
         double[] initEulerAngles = toEulerAngle();
         initOrientationInIndividualSys = initEulerAngles[0];
         xAxisDirectionInBuildingSys =
-                DistanceEstimation.adjustAngle(initOrientationInBuildingSys + 0.5 * DistanceEstimation.adjustAngle(Math.PI - initOrientationInIndividualSys));
+                DistanceEstimation.adjustAngle(initOrientationInBuildingSys + 0.5 * Math.PI - initOrientationInIndividualSys);
 
-        CoordsCalculation.initCameraCoords[0] = initVirtualCameraPose.tx();
-        CoordsCalculation.initCameraCoords[1] = initVirtualCameraPose.tz();
+        CoordsCalculation.initCameraCoords[0] = initVirtualCameraPose.tz();
+        CoordsCalculation.initCameraCoords[1] = initVirtualCameraPose.tx();
         CoordsCalculation.readyForTracking = true;
     }
 
@@ -60,8 +60,8 @@ public class CoordsCalculation implements Runnable {
         // we won't update the coordinates until it gets ready
         if (!readyForTracking || camera.getTrackingState() == TrackingState.PAUSED) return;
         Pose curPose = camera.getDisplayOrientedPose();
-        double displacement = DistanceEstimation.calculateDistance(initCameraCoords[0], initCameraCoords[1], curPose.tx(), curPose.tz());
-        double walkingDirection = DistanceEstimation.adjustAngle(xAxisDirectionInBuildingSys + Math.atan2(curPose.tz() - initCameraCoords[1], curPose.tx() - initCameraCoords[0]));
+        double displacement = DistanceEstimation.calculateDistance(initCameraCoords[0], initCameraCoords[1] , curPose.tz(),curPose.tx());
+        double walkingDirection = DistanceEstimation.adjustAngle(xAxisDirectionInBuildingSys + Math.atan2(curPose.tz() - initCameraCoords[0], curPose.tx() - initCameraCoords[1]));
         curPosition[0] = initCoordinates[0] + displacement * Math.sin(walkingDirection);
         curPosition[1] = initCoordinates[1] + displacement * Math.cos(walkingDirection);
         curOrientationInIndividualSys = toEulerAngle()[0];
@@ -96,6 +96,7 @@ public class CoordsCalculation implements Runnable {
 
             while (readyForTracking) {
                 coordsTracking();
+                //Log.d(TAG, String.format("coords tracking: %f %f", curPosition[0], curPosition[1]));
                 //logDown();
             }
         }

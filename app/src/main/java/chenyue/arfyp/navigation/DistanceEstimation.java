@@ -101,29 +101,29 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         double angle_kBJ = Math.abs(adjustAngle(DistanceEstimation.EulerDegrees[0] + 0.5 * Math.PI) - adjustAngle(objectFacing + 0.5 * Math.PI));
         double JK = BJ * Math.sin(angle_kBJ) / Math.sin(angle_JKB);
         /*log in file start*/
-        try {
-            String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log.txt";
-            Log.d(TAG, "file here: " + logPath);
-            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
-            bw.write("times " + ++times + "\n");
-            bw.write("theta: " + Math.toDegrees(EulerDegrees[1] + 0.5 * Math.PI));
-            bw.write("sin theta: " + Math.sin(EulerDegrees[1] + 0.5 * Math.PI));
-            //bw.write("focal length " + focalLength[1] + "\n");
-            bw.write("location height " + location.height() + "\n");
-            //bw.write("orientation angle " + Math.toDegrees(orientationAngle) + "\n");
-            bw.write("angle_oag " + Math.toDegrees(angle_oag) + "\n");
-            //bw.write("angle_JKB " + Math.toDegrees(angle_JKB) + "\n");
-            //bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
-            bw.write("nearest OG " + nearestOG + "\n");
-            bw.write("nearest OD(distance) " + nearestOD + "\n");
-            //bw.write("calibrated OD " + calibratedOD + "\n");
-            //bw.write("distance " + (calibratedOD + JK) + "\n");
-            bw.flush();
-            bw.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log.txt";
+//            Log.d(TAG, "file here: " + logPath);
+//            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
+//            bw.write("times " + ++times + "\n");
+//            bw.write("theta: " + Math.toDegrees(EulerDegrees[1] + 0.5 * Math.PI));
+//            bw.write("sin theta: " + Math.sin(EulerDegrees[1] + 0.5 * Math.PI));
+//            //bw.write("focal length " + focalLength[1] + "\n");
+//            bw.write("location height " + location.height() + "\n");
+//            //bw.write("orientation angle " + Math.toDegrees(orientationAngle) + "\n");
+//            bw.write("angle_oag " + Math.toDegrees(angle_oag) + "\n");
+//            //bw.write("angle_JKB " + Math.toDegrees(angle_JKB) + "\n");
+//            //bw.write("angle_KBJ " + Math.toDegrees(angle_kBJ) + "\n");
+//            bw.write("nearest OG " + nearestOG + "\n");
+//            bw.write("nearest OD(distance) " + nearestOD + "\n");
+//            //bw.write("calibrated OD " + calibratedOD + "\n");
+//            //bw.write("distance " + (calibratedOD + JK) + "\n");
+//            bw.flush();
+//            bw.close();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
         /*log in file end*/
         return nearestOD;
     }
@@ -216,6 +216,7 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
                     continue;
                 Arrays.sort(detailedObject.distance);
                 detailedObject.averageDistance = calculateAverageDistance(detailedObject);
+                logDown(detailedObject.averageDistance);
 
                 double[] objectCoords = new double[2];
                 //objectCoords = (double[])detailedObject.informationSet.getFacilityDetails().get("coordinates"));
@@ -280,6 +281,13 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
 
     public static double adjustAngle(double angle) {
         // adjust the angle so that it ranges from -PI to PI
+        while (true) {
+            if (angle > 2 * Math.PI)
+                angle = angle - 2 * Math.PI;
+            else if (angle < -2 * Math.PI)
+                angle = angle + 2 * Math.PI;
+            else break;
+        }
         if (angle > Math.PI)
             return -2 * Math.PI + angle;
         else if (angle < -Math.PI)
@@ -307,5 +315,20 @@ public class DistanceEstimation implements SensorEventListener, Runnable {
         }
 //        Log.d(TAG, "for test calculate " + sum);
         return sum / (detailedObject.distance.length - 2);
+    }
+
+    /**
+     * log down the average estimated distance
+     */
+    public void logDown(double data) {
+        try {
+            String logPath = context.getExternalCacheDir().getAbsolutePath() + "/log.txt";
+            Log.d(TAG, "data has been logged into " + logPath);
+            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(logPath, true)));
+            bw.write(data + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e(TAG, "something wrong with logging");
+        }
     }
 }

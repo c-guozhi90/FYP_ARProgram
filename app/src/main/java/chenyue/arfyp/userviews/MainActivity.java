@@ -229,6 +229,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
                 Intent intent = new Intent(context, SearchActivity.class);
                 estimator.setRequireEstimation(true);
                 estimatorThread = new Thread(estimator);
+                CoordsCalculation.readyForTracking = false;
                 coordsTrackerThread = new Thread(coordsTracker);
                 drawMapThread = new Thread(mapView);
                 navigationThread = new Thread(navigator);
@@ -256,8 +257,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     @Override
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(estimator, gSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(estimator, aSensor, SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(estimator, gSensor, SensorManager.SENSOR_DELAY_GAME);
         if (session == null) {
             Exception exception = null;
             String message = null;
@@ -507,7 +508,8 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
             /* tensorflow detection start */
 
             //Here should be asymmetric detection.
-            if (READY_FOR_NEXT_FRAME == true) {
+            if (READY_FOR_NEXT_FRAME && camera.getTrackingState() == TRACKING) {
+                READY_FOR_NEXT_FRAME = false;
                 Image image = frame.acquireCameraImage();
                 detection = tensorflowThread(image);
                 new Thread(detection).start();
@@ -536,7 +538,6 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                READY_FOR_NEXT_FRAME = false;
                 if (cameraCharacteristics == null) return;
                 int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) - TensorflowUtils.getScreenOrientation(mainActivity);
                 Logger logger = new Logger(TAG);
@@ -712,6 +713,11 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         estimatorThread.interrupt();
         coordsTrackerThread.interrupt();
         drawMapThread.interrupt();
+        navigationThread.interrupt();
+        Navigation.START_NAVIGATION = false;
+        DistanceEstimation.REQUIRE_ESTIMATION = false;
+        CoordsCalculation.readyForTracking = false;
+
         quit_navigation.setVisibility(View.INVISIBLE);
         map_button.setVisibility(View.INVISIBLE);
         search_button.setVisibility(View.VISIBLE);
@@ -721,14 +727,17 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == SearchActivity.START_FOR_NAVIGATION) {
-            if (coordsTrackerThread != null) coordsTrackerThread.start();
+            DistanceEstimation.REQUIRE_ESTIMATION = true;
+            Navigation.TARGET_REACHED = false;  // the flag controlling the loop in navigation thread
+            Navigation.START_NAVIGATION = false;
+            CoordsCalculation.readyForTracking = false;
+
             if (estimatorThread != null) {
-                DistanceEstimation.REQUIRE_ESTIMATION = true;
                 estimatorThread.start();
             }
+            if (coordsTrackerThread != null) coordsTrackerThread.start();
             if (drawMapThread != null) drawMapThread.start();
             if (navigationThread != null) {
-                Navigation.TARGET_REACHED = false;  // the flag controlling the loop in navigation thread
                 navigationThread.start();
             }
             quit_navigation.setVisibility(View.VISIBLE);
